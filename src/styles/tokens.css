@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
+:root {
+  color-scheme: dark;
+  --bg: #05070C; --bg-2: #081020; --surface: #0B1322; --surface-2: #111C30; --navy: #0F2347; --navy-2: #13306A;
+  --line: rgba(140,165,215,.14); --line-2: rgba(140,165,215,.28);
+  --text: #E9EEF8; --muted: #8E9AB4; --accent: #4C8DFF; --accent-2: #8DB6FF; --cyan: #5ED3E8;
+  --ok: #3DD68C; --warn: #F5B44A; --bad: #FF6B6B; --heart: #FF6B8B;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r: 16px;
+}
