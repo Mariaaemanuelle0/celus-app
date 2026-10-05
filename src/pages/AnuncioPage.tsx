@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ACESSO, CATEGORIAS, COMODIDADES, PROFISSOES } from '../data/catalogo';
 import type { Extra } from '../data/types';
-import { Miniatura, Moeda, Voltar, toast, useLocalizacao } from '../components/ui';
+import { IconeCategoria, Miniatura, Moeda, Voltar, toast, useLocalizacao } from '../components/ui';
 import { StoryRing } from '../components/Stories';
 import { brl, rotuloHoras, virgula } from '../lib/format';
 import { distanciaKm, formatarDistancia } from '../lib/geo';
@@ -76,55 +76,68 @@ export function AnuncioPage() {
     }
   }
 
+  const horario = (() => {
+    const t = a.agenda.dias.map((h) => (h ? `${hhmm(h[0])} às ${hhmm(h[1])}` : 'fechado'));
+    if (t.every((x) => x === t[0])) return t[0] === '00:00 às 24:00' ? 'Aberto 24 horas' : `Todos os dias, ${t[0]}`;
+    return t.map((x, i) => `${DIAS[i]} ${x}`).join(', ');
+  })();
+  const total = a.tipoPreco === 'pacote' && pacote ? pacote.preco * pes + TAXA_HORA + somaExtras
+    : a.tipoPreco === 'diaria' ? (a.preco ?? 0) * noites + somaExtras
+    : servico ? (a.preco ?? 0) * (a.unidadePreco === '/h' ? horas : 1) + TAXA_SERVICO : null;
+  const temComod = Object.keys(COMODIDADES).filter((k) => a.comodidades.includes(k));
+
   return (
     <>
-      <Voltar />
-      <div style={{ position: 'relative' }}>
+      <div className="capa-topo">
         <Miniatura a={a} grande />
-        <button className="coracao" aria-pressed={salvo} aria-label={salvo ? 'Tirar do livro dos sonhos' : 'Guardar no livro dos sonhos'} onClick={() => { alternarSonho(a.id); toast(salvo ? 'Saiu do livro dos sonhos' : 'Guardado no livro dos sonhos'); }}>
-          <svg viewBox="0 0 24 24" fill={salvo ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>
-        </button>
+        <div className="capa-acoes">
+          <Voltar />
+          <button className="coracao" aria-pressed={salvo} aria-label={salvo ? 'Tirar do livro dos sonhos' : 'Guardar no livro dos sonhos'} onClick={() => { alternarSonho(a.id); toast(salvo ? 'Saiu do livro dos sonhos' : 'Guardado no livro dos sonhos'); }}>
+            <svg viewBox="0 0 24 24" fill={salvo ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="ficha">
+        <span className="catpill" style={{ ['--c' as string]: cat.cor }}><IconeCategoria c={a.categoria} tamanho={14} />{sub}</span>
+        <h1>{a.titulo}</h1>
+        <p className="meta" style={{ margin: '0 0 10px' }}>{a.bairro}{dist != null ? `, a ${formatarDistancia(dist)} de você` : ''}</p>
+        <p className="desc">{a.descricao}</p>
+        <div className="fatos">
+          <div><b className="num">{virgula(a.notaQualidade)}</b><span>qualidade</span></div>
+          <div><b className="num">{virgula(a.notaCustoBeneficio)}</b><span>custo-benefício</span></div>
+          <div><b className="num">{a.totalAvaliacoes}</b><span>avaliações</span></div>
+          {a.metragemM2 ? <div><b className="num">{a.metragemM2}</b><span>m²</span></div> : <div><b className="num">{a.totalSonhos}</b><span>sonham</span></div>}
+        </div>
       </div>
 
       {!servico && !imovel && (
-        <div className="box" style={{ marginTop: 12, padding: '12px 14px' }}>
-          <div className="row" style={{ flexWrap: 'nowrap' }}>
-            {meusStories.length > 0 && <StoryRing lista={meusStories} rotulo={`${meusStories.length} agora`} cor={cat.cor} />}
-            <div className="sp" style={{ minWidth: 0 }}>
-              <b style={{ fontSize: 14 }}>{meusStories.length ? 'Stories de quem está aqui' : 'Ninguém postou daqui ainda'}</b>
-              <div className="hint">Ficam 3 horas no local e no perfil de quem postou.</div>
-              <div className="row" style={{ marginTop: 8 }}>
-                {podePostar(a.id)
-                  ? <Link className="btn sm" to={`/story/${a.id}`}>Postar story daqui</Link>
-                  : <button className="btn sm ghost" onClick={() => { const r = checkin(a, onde); toast(r.ok ? 'Check-in feito' : r.erro); }}>Estou aqui</button>}
-              </div>
-            </div>
+        <div className="box storybox">
+          {meusStories.length > 0 && <StoryRing lista={meusStories} rotulo={`${meusStories.length} agora`} cor={cat.cor} />}
+          <div className="sp" style={{ minWidth: 0 }}>
+            <b>{meusStories.length ? 'Stories de quem está aqui' : 'Ninguém postou daqui ainda'}</b>
+            <div className="hint">Somem em 3 horas.</div>
           </div>
+          {podePostar(a.id)
+            ? <Link className="btn sm" to={`/story/${a.id}`}>Postar story daqui</Link>
+            : <button className="btn sm ghost" onClick={() => { const r = checkin(a, onde); toast(r.ok ? 'Check-in feito' : r.erro); }}>Estou aqui</button>}
         </div>
       )}
 
-      <div className="eyebrow" style={{ marginTop: 16 }}>{cat.nome} · {sub} · {a.bairro}{dist != null ? ` · ${formatarDistancia(dist)}` : ''}</div>
-      <h1>{a.titulo}</h1>
-      <p style={{ margin: '0 0 14px' }}>{a.descricao}</p>
-
-      <div className="stats">
-        <div className="box stat"><b>{virgula(a.notaQualidade)}</b><span>Qualidade</span></div>
-        <div className="box stat"><b>{virgula(a.notaCustoBeneficio)}</b><span>Custo-benefício</span></div>
-        <div className="box stat"><b>{a.metragemM2 ?? '–'}</b><span>m²</span></div>
-        <div className="box stat"><b>{a.totalSonhos}</b><span>sonham</span></div>
-      </div>
-
       {!servico && (
         <>
-          <h2>O que tem aqui</h2>
-          <div className="chips">{Object.entries(COMODIDADES).map(([k, n]) => <span key={k} className={`tag ${a.comodidades.includes(k) ? '' : 'off'}`}>{n}</span>)}</div>
-          <p className="meta" style={{ marginTop: 10 }}>
-            {a.totalAvaliacoes} avaliações · até {a.capacidade} {a.capacidade > 1 ? 'pessoas' : 'pessoa'}
-            {a.tipoAcesso ? ` · Acesso: ${ACESSO[a.tipoAcesso]}` : ''}{a.limpezaInclusa ? ' · Limpeza inclusa' : ''}
-          </p>
-          {a.tipoPreco === 'pacote' && (
-            <p className="meta">Funcionamento: {a.agenda.dias.map((h, i) => h ? `${DIAS[i]} ${hhmm(h[0])}–${hhmm(h[1])}` : `${DIAS[i]} fechado`).filter((_, i, arr) => arr.indexOf(arr[i]) === i).join(' · ')}</p>
+          {temComod.length > 0 && (
+            <>
+              <h2>O que tem aqui</h2>
+              <ul className="comod">{temComod.map((k) => <li key={k}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{COMODIDADES[k]}</li>)}</ul>
+            </>
           )}
+          <div className="box infos">
+            <div className="sumline"><span>Capacidade</span><span>até {a.capacidade} {a.capacidade > 1 ? 'pessoas' : 'pessoa'}</span></div>
+            {a.tipoAcesso && <div className="sumline"><span>Acesso</span><span>{ACESSO[a.tipoAcesso]}</span></div>}
+            {a.limpezaInclusa && <div className="sumline"><span>Limpeza</span><span>Inclusa</span></div>}
+            {a.tipoPreco === 'pacote' && <div className="sumline"><span>Funcionamento</span><span>{horario}</span></div>}
+          </div>
         </>
       )}
 
@@ -133,7 +146,7 @@ export function AnuncioPage() {
           <h2>Troque seus celus aqui</h2>
           <div className="stack">{beneficiosAqui.map((b) => (
             <div key={b.id} className="box linha">
-              <div className="sp"><b>{b.nome}</b><div className="hint">Oferecido pelo local · você tem <span className="num">{carteira}</span> celus</div></div>
+              <div className="sp"><b>{b.nome}</b><div className="hint">Oferecido pelo local. Você tem <span className="num">{carteira}</span> celus.</div></div>
               <button className="btn sm" disabled={carteira < b.custo} onClick={() => { const c = resgatar(b.id); toast(c ? `${b.nome} resgatado. Código ${c}` : 'Saldo insuficiente'); }}><Moeda tamanho={14} /> <span className="num">{b.custo}</span></button>
             </div>
           ))}</div>
@@ -214,13 +227,16 @@ export function AnuncioPage() {
       )}
 
       {erro && <p className="erro" role="alert" style={{ marginTop: 12 }}>{erro}</p>}
-      <div style={{ marginTop: 16 }}>
-        {(a.tipoPreco === 'pacote' || a.tipoPreco === 'diaria') && a.donoId !== uid && <button className="btn" onClick={reservar}>Confirmar e pagar</button>}
-        {servico && <button className="btn" onClick={() => { const rid = chamarProfissional(a, a.unidadePreco === '/h' ? horas : 1); if (rid) nav(`/reserva/${rid}`); }}>Chamar {a.titulo.split(',')[0]}</button>}
-        {imovel && <button className="btn" onClick={() => toast('Interesse enviado. O corretor responsável entra em contato pela plataforma.')}>Tenho interesse</button>}
-        {a.donoId === uid && <p className="hint">Este anúncio é seu.</p>}
-        {(a.tipoPreco === 'pacote' || servico) && <p className="hint" style={{ marginTop: 8 }}>Pagamento em modo de teste: nenhuma cobrança real é feita.</p>}
-      </div>
+      {(a.tipoPreco === 'pacote' || servico || a.tipoPreco === 'diaria') && <p className="hint" style={{ marginTop: 10 }}>Pagamento em modo de teste: nenhuma cobrança real é feita.</p>}
+      {a.donoId === uid && <p className="hint" style={{ marginTop: 10 }}>Este anúncio é seu.</p>}
+      {a.donoId !== uid && (
+        <div className="acao-fixa">
+          {total != null && <div className="acao-total"><span className="hint">Total</span><b className="num">{brl(total)}</b></div>}
+          {(a.tipoPreco === 'pacote' || a.tipoPreco === 'diaria') && <button className="btn" onClick={reservar}>Confirmar e pagar</button>}
+          {servico && <button className="btn" onClick={() => { const rid = chamarProfissional(a, a.unidadePreco === '/h' ? horas : 1); if (rid) nav(`/reserva/${rid}`); }}>Chamar {a.titulo.split(',')[0]}</button>}
+          {imovel && <button className="btn" onClick={() => toast('Interesse enviado. O corretor responsável entra em contato pela plataforma.')}>Tenho interesse</button>}
+        </div>
+      )}
     </>
   );
 }
@@ -229,19 +245,19 @@ function SemaforoLocal({ a, marcas }: { a: { lat: number; lng: number }; marcas:
   const agora = slotDe();
   return (
     <>
-      <h2>Semáforo de segurança da região</h2>
+      <h2>Semáforo da região</h2>
       <div className="slots">{Object.entries(SLOTS).map(([k, n]) => {
         const l = leitura(a, k, marcas);
         return (
           <div key={k} className={`slot ${k === agora ? 'now' : ''}`}>
-            <span className="hint">{n}{k === agora ? ' · agora' : ''}</span>
+            <span className="hint">{n}</span>
             <b style={{ color: l.cor === 'sem' ? 'var(--muted)' : COR_CSS[l.cor] }}>{l.rotulo}</b>
-            <span className="hint num">{l.n} marcações</span>
+            <span className="hint">{l.n} {l.n === 1 ? 'marcação' : 'marcações'}</span>
             <i className="bar" style={{ background: COR_CSS[l.cor] }} />
           </div>
         );
       })}</div>
-      <p className="hint" style={{ marginTop: 8 }}>Cores marcadas por quem esteve na região nos últimos 30 dias. É percepção, não garantia.</p>
+      <p className="hint" style={{ marginTop: 8 }}>Cores marcadas por quem esteve na região nos últimos 30 dias. O horário destacado é o de agora. É percepção, não garantia.</p>
     </>
   );
 }

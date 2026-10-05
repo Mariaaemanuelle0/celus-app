@@ -110,12 +110,12 @@ export function UsoPage() {
         <div className="lbl">{resto >= 0 ? 'Tempo restante' : c.cobravel > 0 ? 'Excedente (cobrando)' : 'Tolerância'}</div>
         <div className="clock num">{relogio}</div>
         <div className="hp"><i style={{ width: `${Math.max(0, Math.min(100, (resto / c.contratadoMin) * 100))}%` }} /></div>
-        <div className="lbl">Contratado {rotuloHoras(c.contratadoMin / 60)}</div>
+        <div className="hint">Contratado: {rotuloHoras(c.contratadoMin / 60)}</div>
       </div>
       {resto <= AVISO_MIN && resto > 0 && <div className="alerta warn" style={{ marginTop: 12 }}><b>Faltam {Math.ceil(resto)} minutos.</b> Quer mais tempo? Estenda com um toque.</div>}
       {resto <= 0 && c.cobravel === 0 && <div className="alerta warn" style={{ marginTop: 12 }}><b>Seu tempo acabou.</b> Você tem {Math.max(0, Math.ceil(CARENCIA_MIN - c.excedente))} min de tolerância antes da cobrança por minuto.</div>}
       {c.cobravel > 0 && <div className="alerta bad" style={{ marginTop: 12 }}><b>Cobrança por minuto ativa.</b> {c.bateuTeto ? 'Chegou ao teto de 2× o valor da hora. Não cobramos mais que isso.' : `Teto: ${brl(c.teto)}.`}</div>}
-      <button className="btn" style={{ marginTop: 12, background: 'var(--text)', color: 'var(--bg)' }} onClick={() => { estender(r.id); toast('Mais 1 hora adicionada'); }}>Estender +1 h por {brl(ph)}</button>
+      <button className="btn" style={{ marginTop: 12 }} onClick={() => { estender(r.id); toast('Mais 1 hora adicionada'); }}>Estender +1 h por {brl(ph)}</button>
       <div className="box resumo">
         <div className="sumline"><span>Pacote e extras</span><span>{brl(c.subtotal - c.multa - r.extensoes * ph)}</span></div>
         {r.extensoes > 0 && <div className="sumline"><span>Extensões ({r.extensoes} h)</span><span>{brl(r.extensoes * ph)}</span></div>}
@@ -152,7 +152,7 @@ function Avaliar({ reservaId }: { reservaId: string }) {
             <div className="seg"><button aria-pressed={dev === true} onClick={() => setDev(true)}>Sim</button><button aria-pressed={dev === false} onClick={() => setDev(false)}>Não</button></div>
           </div>
         )}
-        <button className="btn" disabled={!q || !cb || (precisaDevolveu && dev === undefined)} onClick={() => { avaliarAnuncio(r.id, q, cb, dev); toast('Avaliação enviada · +10 celus'); nav('/perfil'); }}>Enviar avaliação</button>
+        <button className="btn" disabled={!q || !cb || (precisaDevolveu && dev === undefined)} onClick={() => { avaliarAnuncio(r.id, q, cb, dev); toast('Avaliação enviada. Você ganhou 10 celus'); nav('/perfil'); }}>Enviar avaliação</button>
         <p className="hint">Só estrelas, sem comentário. O anfitrião também avalia você.</p>
       </div>
     </>

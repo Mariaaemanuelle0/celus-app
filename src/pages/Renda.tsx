@@ -35,16 +35,19 @@ export function Painel() {
 
   if (!meus.length) return (
     <>
-      <div className="eyebrow">Rentabilizar</div>
       <h1>Seu espaço ou serviço trabalhando por você</h1>
-      <p className="lead">Cadastre uma varanda, uma sala, uma vaga, um banheiro com chuveiro ou o seu serviço. A equipe Celus revisa antes de publicar e você recebe 85% de cada reserva.</p>
+      <p className="lead">Uma varanda, uma sala, uma vaga, um banheiro com chuveiro ou o seu serviço. Você define preço, horários e extras.</p>
+      <ol className="etapas">
+        <li><b>Cadastre</b><span>Fotos, preço por pacote e o manual de bons modos. Leva poucos minutos.</span></li>
+        <li><b>A equipe Celus revisa</b><span>Conferimos tudo antes de aparecer no mapa.</span></li>
+        <li><b>Receba 85% de cada reserva</b><span>A Celus fica com 15%. Quem reserva paga uma taxa à parte.</span></li>
+      </ol>
       <Link className="btn" to="/renda/anunciar">Anunciar agora</Link>
     </>
   );
 
   return (
     <>
-      <div className="eyebrow">Rentabilizar</div>
       <h1>Seu painel</h1>
       <div className="kpis">
         <div className="box kpi"><b className="num">{brl(ganhos)}</b><span>a receber</span></div>
@@ -158,7 +161,6 @@ export function Anunciar() {
 
   return (
     <form onSubmit={enviar} noValidate>
-      <div className="eyebrow">Rentabilizar</div>
       <h1>Anunciar</h1>
       <p className="lead">O anúncio fica na posição onde você está agora{onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. A equipe Celus revisa antes de publicar.</p>
       <div className="stack">

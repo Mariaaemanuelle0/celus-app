@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Marca } from '../components/Layout';
+import { IconeCategoria } from '../components/ui';
+import { CATEGORIAS } from '../data/catalogo';
+import type { Categoria } from '../data/types';
 import { lerImagem } from '../components/ui';
 import { cadastrar, entrar, enviarDocumento } from '../store/acoes';
 import { useUsuario } from '../store/db';
@@ -35,12 +38,15 @@ export function Entrar() {
       <div className="entrada-topo"><Marca /><span>Celus</span></div>
 
       {tela === 'inicio' && (
-        <div className="stack" style={{ gap: 16 }}>
-          <h1 style={{ fontSize: 28 }}>Espaços e serviços por perto, na hora que você precisa.</h1>
+        <div className="entrada-inicio">
+          <Radar />
+          <h1 className="entrada-h1">Espaços e serviços por perto, na hora que você precisa.</h1>
           <p className="lead">Banho, descanso, lugar para trabalhar, estacionamento, estadia, evento e profissionais. Tudo num mapa.</p>
-          <button className="btn" onClick={() => setTela('cadastro')}>Criar conta</button>
-          <button className="btn ghost" onClick={() => setTela('entrar')}>Já tenho conta</button>
-          <p className="hint">O Celus é só para maiores de 18 anos.</p>
+          <div className="stack" style={{ gap: 10, marginTop: 8 }}>
+            <button className="btn" onClick={() => setTela('cadastro')}>Criar conta</button>
+            <button className="btn ghost" onClick={() => setTela('entrar')}>Já tenho conta</button>
+          </div>
+          <p className="hint" style={{ textAlign: 'center', marginTop: 4 }}>Só para maiores de 18 anos.</p>
         </div>
       )}
 
@@ -93,8 +99,7 @@ export function Verificar() {
     <div className="shell"><div className="app entrada">
       <div className="entrada-topo"><Marca /><span>Celus</span></div>
       <div className="stack">
-        <div className="eyebrow">Verificação</div>
-        <h1>Confirme sua identidade</h1>
+                <h1>Confirme sua identidade</h1>
         <p className="lead">É o que garante que todo mundo no Celus é real e maior de idade. Libera o chat, os stories e as categorias de estadia.</p>
         <label className="upload">{doc ? <img src={doc} alt="Documento enviado" /> : <span>Foto do documento (RG ou CNH)</span>}<input id="v-doc" type="file" accept="image/*" capture="environment" onChange={ler(setDoc)} /></label>
         <label className="upload">{selfie ? <img src={selfie} alt="Selfie enviada" /> : <span>Selfie segurando o documento</span>}<input id="v-selfie" type="file" accept="image/*" capture="user" onChange={ler(setSelfie)} /></label>
@@ -103,5 +108,31 @@ export function Verificar() {
         <p className="hint">No modo demonstração a verificação é aprovada na hora e as fotos não saem do aparelho. No app real, um serviço especializado confere documento e rosto.</p>
       </div>
     </div></div>
+  );
+}
+
+/** Ilustração de abertura: o raio de busca com lugares em volta de você. */
+function Radar() {
+  const pontos: [Categoria, number, number][] = [
+    ['banheiro', 92, 70], ['trabalho', 232, 58], ['descanso', 268, 150], ['estacionamento', 58, 168],
+    ['servicos', 196, 222], ['eventos', 120, 236], ['ficar', 290, 236],
+  ];
+  return (
+    <div className="radar" aria-hidden="true">
+      <svg viewBox="0 0 340 280" width="100%">
+        <defs>
+          <radialGradient id="rg" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#4C8DFF" stopOpacity=".22" /><stop offset="1" stopColor="#4C8DFF" stopOpacity="0" /></radialGradient>
+        </defs>
+        <circle cx="170" cy="145" r="128" fill="url(#rg)" />
+        {[44, 86, 128].map((r) => <circle key={r} cx="170" cy="145" r={r} fill="none" stroke="#4C8DFF" strokeOpacity={r === 128 ? 0.55 : 0.2} strokeDasharray={r === 128 ? '2 6' : undefined} />)}
+        <circle cx="170" cy="145" r="7" fill="#4C8DFF" stroke="#fff" strokeWidth="2.5" />
+        {pontos.map(([c, x, y]) => (
+          <g key={c} transform={`translate(${x - 17} ${y - 17})`} style={{ color: CATEGORIAS[c].cor }}>
+            <rect width="34" height="34" rx="11" fill="#0A1120" stroke="currentColor" strokeOpacity=".55" />
+            <g transform="translate(8 8)"><IconeCategoria c={c} tamanho={18} /></g>
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }

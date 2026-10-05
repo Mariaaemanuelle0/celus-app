@@ -31,11 +31,10 @@ export function FeedPage() {
 
   return (
     <>
-      <div className="eyebrow">Feed</div>
-      <h1>O que está rolando perto de você</h1>
-      <p className="lead">Stories de quem está nos lugares agora. Cada um some em 3 horas.</p>
+      <h1>Perto de você agora</h1>
+      <p className="lead">Stories de quem está nos lugares. Cada um some em 3 horas.</p>
       <div className="stories">
-        {porLocal.length ? porLocal.map(({ a, l }) => <StoryRing key={a.id} lista={l} rotulo={a.titulo.split(' ').slice(0, 2).join(' ')} cor={CATEGORIAS[a.categoria].cor} />)
+        {porLocal.length ? porLocal.map(({ a, l }) => <StoryRing key={a.id} lista={l} rotulo={a.titulo} cor={CATEGORIAS[a.categoria].cor} />)
           : <span className="hint">Nenhum story no ar por perto agora.</span>}
       </div>
 
@@ -58,8 +57,8 @@ export function FeedPage() {
               )}
               <article className="box post">
                 <div className="phead"><span className="pav" style={{ ['--c' as string]: CATEGORIAS[a.categoria].cor }}>{a.titulo.slice(0, 1)}</span>
-                  <div className="sp" style={{ minWidth: 0 }}><b>{a.titulo}</b><div className="hint">{sub} · {formatarDistancia(distanciaKm(onde, a))}</div></div>
-                  <span className="coin">{rotuloPreco(a, true)}</span></div>
+                  <div className="sp" style={{ minWidth: 0 }}><b>{a.titulo}</b><div className="hint">{sub} a {formatarDistancia(distanciaKm(onde, a))}</div></div>
+                  <span className="preco">{rotuloPreco(a, true)}</span></div>
                 <Link to={`/anuncio/${a.id}`} className="postimg"><Miniatura a={a} grande /></Link>
                 <p className="ptext">{a.descricao}</p>
                 <div className="pact">
@@ -99,7 +98,7 @@ export function PostarStory() {
         <label className="campo">Legenda<input id="s-legenda" maxLength={120} value={legenda} onChange={(e) => setLegenda(e.target.value)} placeholder="O prato, o lugar, o momento" /></label>
         <label className="check"><input type="checkbox" checked={noPerfil} onChange={(e) => setNoPerfil(e.target.checked)} /><span>Mostrar também no meu perfil</span></label>
         <div className="dica"><p style={{ margin: 0 }}>O story fica ligado ao local, não à sua localização em tempo real, e some sozinho em 3 horas. Não mostre o rosto de quem não autorizou, nem crianças.</p></div>
-        <button className="btn" disabled={!img} onClick={() => { const g = postarStory(a.id, legenda.trim(), img, noPerfil); toast(g ? `Story publicado · +${g} celus` : 'Story publicado'); nav(`/anuncio/${a.id}`); }}>Publicar story</button>
+        <button className="btn" disabled={!img} onClick={() => { const g = postarStory(a.id, legenda.trim(), img, noPerfil); toast(g ? `Story publicado. Você ganhou ${g} celus` : 'Story publicado'); nav(`/anuncio/${a.id}`); }}>Publicar story</button>
         <p className="hint">No app real, um filtro automático confere a imagem antes de publicar.</p>
       </div>
     </>

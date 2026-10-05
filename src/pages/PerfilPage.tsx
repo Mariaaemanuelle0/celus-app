@@ -39,7 +39,7 @@ export function PerfilPage() {
         <button className={`avatar ${meusStories.length ? 'comstory' : ''}`} onClick={() => meusStories.length && setVerStories(true)} aria-label="Seus stories">{iniciais}</button>
         <div className="sp" style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: 21, margin: 0 }}>{u.nome}</h1>
-          <div className="meta">{u.verificacao === 'verificado' ? '✓ Identidade verificada' : 'Identidade não verificada'}{media ? ` · ★ ${media.toFixed(1).replace('.', ',')} como hóspede` : ''}</div>
+          <div className="meta">{u.verificacao === 'verificado' ? 'Identidade verificada' : 'Identidade não verificada'}{media ? `. Nota ${media.toFixed(1).replace('.', ',')} como hóspede` : ''}</div>
         </div>
       </div>
       {verStories && <Visualizador lista={meusStories} fechar={() => setVerStories(false)} />}
@@ -64,8 +64,8 @@ export function PerfilPage() {
             return (
               <Link key={r.id} to={r.status === 'em_uso' ? `/uso/${r.id}` : `/reserva/${r.id}`} className="box listrow">
                 <Miniatura a={a} />
-                <div><span className="t">{a.titulo}</span><span className="meta">{STATUS[r.status]} · {data(r.inicio)} · {brl(r.total)}</span>
-                  {r.status === 'concluida' && !r.avaliadaPeloUsuario && <span className="coin">Avaliar</span>}</div>
+                <div><span className="t">{a.titulo}</span><span className="meta">{STATUS[r.status]}, {data(r.inicio)}, <span className="num">{brl(r.total)}</span></span>
+                  {r.status === 'concluida' && !r.avaliadaPeloUsuario && <span className="status pendente">Falta avaliar</span>}</div>
               </Link>
             );
           }) : <div className="empty">Nenhuma reserva ainda. <Link to="/">Abrir o mapa</Link></div>}
@@ -92,7 +92,7 @@ export function PerfilPage() {
       )}
 
       <h2>Conta</h2>
-      <div className="box" style={{ padding: '4px 14px' }}>
+      <div className="box infos" style={{ marginTop: 0 }}>
         <div className="sumline"><span>E-mail</span><span className="hint">{u.email}</span></div>
         <div className="sumline"><span>Idade</span><span className="hint">{idade(u.nascimento)} anos</span></div>
         <label className="sumline check" style={{ border: 0 }}><span>Sou da equipe Celus (curadoria)</span><input type="checkbox" checked={u.equipeCelus} onChange={alternarEquipe} /></label>

@@ -14,10 +14,11 @@ const falta = (t: number) => { const m = Math.max(0, Math.round((t + STORY_MS - 
 
 export function StoryRing({ lista, rotulo, cor }: { lista: Story[]; rotulo: string; cor: string }) {
   const [aberto, setAberto] = useState(false);
+  const ultimo = lista[lista.length - 1];
   return (
     <>
-      <button className="sto" onClick={() => setAberto(true)}>
-        <span className="ring"><span className="in" style={{ ['--c' as string]: cor }} /></span>
+      <button className="sto" onClick={() => setAberto(true)} aria-label={`Ver stories: ${rotulo}`}>
+        <span className="ring"><span className="in" style={{ ['--c' as string]: cor, ...(ultimo?.img ? { backgroundImage: `url(${ultimo.img})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}) }}>{!ultimo?.img && <b style={{ fontFamily: 'var(--display)', fontWeight: 600 }}>{ultimo?.autorNome.slice(0, 1)}</b>}</span></span>
         <span className="n">{rotulo}</span>
       </button>
       {aberto && <Visualizador lista={lista} fechar={() => setAberto(false)} />}
@@ -39,7 +40,7 @@ export function Visualizador({ lista, fechar }: { lista: Story[]; fechar: () => 
         <div className="bars">{lista.map((_, k) => <i key={k} className={k <= i ? 'on' : ''} />)}</div>
         <div className="vh">
           <span className="pav" style={{ ['--c' as string]: cor }}>{st.autorNome.slice(0, 1)}</span>
-          <div style={{ minWidth: 0 }}><b>{st.autorNome}</b><div className="hint" style={{ color: '#B9C4DA' }}>em {a.titulo} · {ha(st.criado)}</div></div>
+          <div style={{ minWidth: 0 }}><b>{st.autorNome}</b><div className="hint" style={{ color: '#B9C4DA' }}>em {a.titulo}, {ha(st.criado)}</div></div>
           <button className="x" onClick={fechar} aria-label="Fechar">×</button>
         </div>
         <div className="media" style={{ ['--c' as string]: cor }}>

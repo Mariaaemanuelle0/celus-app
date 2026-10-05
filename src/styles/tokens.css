@@ -1,13 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+/* Fontes servidas pelo próprio app: carregam offline e não dependem do Google. */
+@import '@fontsource/unbounded/latin-500.css';
+@import '@fontsource/unbounded/latin-600.css';
+@import '@fontsource/instrument-sans/latin-400.css';
+@import '@fontsource/instrument-sans/latin-500.css';
+@import '@fontsource/instrument-sans/latin-600.css';
+@import '@fontsource/instrument-sans/latin-700.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
 
 :root {
   color-scheme: dark;
-  --bg: #05070C; --bg-2: #081020; --surface: #0B1322; --surface-2: #111C30; --navy: #0F2347; --navy-2: #13306A;
-  --line: rgba(140,165,215,.14); --line-2: rgba(140,165,215,.28);
-  --text: #E9EEF8; --muted: #8E9AB4; --accent: #4C8DFF; --accent-2: #8DB6FF; --cyan: #5ED3E8;
+  /* Base: preto com um fio de azul-marinho */
+  --bg: #03050A;
+  --bg-2: #060B16;
+  --surface: #0A1120;
+  --surface-2: #0F1A2E;
+  --raised: #14213A;
+  --navy: #0E2250;
+  --navy-2: #163374;
+  /* Linhas */
+  --line: rgba(150,175,225,.11);
+  --line-2: rgba(150,175,225,.22);
+  /* Texto */
+  --text: #EEF2FA;
+  --text-2: #C4CEE2;
+  --muted: #8692AD;
+  /* Acento azul elétrico */
+  --accent: #4C8DFF;
+  --accent-strong: #2F6BEA;
+  --accent-2: #9CC0FF;
+  --accent-soft: rgba(76,141,255,.14);
+  --cyan: #5ED3E8;
+  /* Estados */
   --ok: #3DD68C; --warn: #F5B44A; --bad: #FF6B6B; --heart: #FF6B8B;
+  /* Tipografia */
   --display: "Unbounded", "Arial Black", system-ui, sans-serif;
   --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --r: 16px;
+  /* Raios: grande para superfícies, médio para controles, pílula para chips */
+  --r: 18px; --r-sm: 12px;
+  --tabs-h: 64px;
+  --top-h: 56px;
 }

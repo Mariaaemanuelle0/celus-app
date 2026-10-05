@@ -65,13 +65,13 @@ export function Layout() {
     <div className="shell">
       <div className="app">
         <header className="top">
-          <Link to="/" className="logo"><Marca />Celus</Link>
+          <Link to="/" className="logo" aria-label="Celus, início"><Marca /><span>Celus</span></Link>
           <div className="layer" role="group" aria-label="Camada">
             <button aria-pressed={!renda} onClick={() => nav('/')}>Procurar</button>
             <button aria-pressed={renda} onClick={() => nav('/renda')}>Rentabilizar</button>
           </div>
         </header>
-        <main><Outlet /></main>
+        <main className={loc.pathname === '/' ? 'cheio' : ''}><Outlet /></main>
         {mostrarEmUso && <div className="live-wrap"><EmUso /></div>}
         <nav className="tabs" style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }} aria-label="Navegação">
           {abas.map((a) => (

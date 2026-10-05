@@ -6,9 +6,9 @@ import 'leaflet/dist/leaflet.css';
 import { CATEGORIAS, COMODIDADES, ORDEM_CATEGORIAS, PROFISSOES } from '../data/catalogo';
 import type { Anuncio, Categoria } from '../data/types';
 import { useAnuncios } from '../data/useAnuncios';
-import { Miniatura, toast, useLocalizacao } from '../components/ui';
+import { IconeCategoria, Miniatura, toast, useLocalizacao } from '../components/ui';
 import { centroPiloto, distanciaKm, formatarDistancia, type Ponto } from '../lib/geo';
-import { nota, precoBase, rotuloPreco, virgula } from '../lib/format';
+import { brl, nota, precoBase, rotuloPreco, virgula } from '../lib/format';
 import { SLOTS, slotDe } from '../lib/regras';
 import { COR_CSS, leitura } from '../lib/semaforo';
 import { marcarSemaforo } from '../store/acoes';
@@ -22,15 +22,25 @@ const nomeSub = (a: Anuncio) =>
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-function iconePin(a: Anuncio, longe: boolean) {
+function pinPreco(a: Anuncio) {
+  const v = precoBase(a);
+  if (v >= 1000) return `R$ ${virgula(v / 1000, v % 1000 ? 1 : 0).replace(',0', '')} mil`;
+  return brl(v);
+}
+function iconePin(a: Anuncio, longe: boolean, ativo: boolean) {
   const cor = CATEGORIAS[a.categoria].cor;
-  return L.divIcon({ className: '', html: `<div class="pin ${longe ? 'far' : ''}" style="--c:${cor}"><b></b><span>${rotuloPreco(a, true)}</span></div>`, iconSize: [0, 0] });
+  return L.divIcon({ className: '', html: `<div class="pin${longe ? ' far' : ''}${ativo ? ' on' : ''}" style="--c:${cor}"><i></i>${pinPreco(a)}</div>`, iconSize: [0, 0] });
 }
 const iconeEu = L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
 
 function SeguirCentro({ centro }: { centro: Ponto }) {
   const map = useMap();
   useEffect(() => { map.setView([centro.lat, centro.lng]); }, [centro, map]);
+  return null;
+}
+function FecharAoTocar({ onToque }: { onToque: () => void }) {
+  const map = useMap();
+  useEffect(() => { map.on('click', onToque); return () => { map.off('click', onToque); }; }, [map, onToque]);
   return null;
 }
 function CliqueParaMover({ ativo, onMover }: { ativo: boolean; onMover: (p: Ponto) => void }) {
@@ -76,11 +86,11 @@ function Semaforo({ centro, colorir, setColorir }: { centro: Ponto; colorir: boo
       {aberto && (
         <div className="semapop">
           <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp" style={{ fontSize: 13 }}>Aqui, {SLOTS[slot].toLowerCase()}</b><button className="x" onClick={() => setAberto(false)} aria-label="Fechar">×</button></div>
-          <div style={{ fontSize: 13, margin: '2px 0 10px' }}><b style={{ color: l.cor === 'sem' ? 'var(--muted)' : COR_CSS[l.cor] }}>{l.rotulo}</b> <span className="hint num">· {l.n} marcações</span></div>
+          <div style={{ fontSize: 13, margin: '2px 0 10px' }}><b style={{ color: l.cor === 'sem' ? 'var(--muted)' : COR_CSS[l.cor] }}>{l.rotulo}</b> <span className="hint">{l.n} marcações</span></div>
           <div className="hint" style={{ marginBottom: 6 }}>Como está para você agora?</div>
           <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
             {OPC.map(([n, nome, desc, cor]) => (
-              <button key={n} className="semaopt" style={{ ['--c' as string]: cor }} aria-label={`${nome}: ${desc}`} onClick={() => { const g = marcarSemaforo(centro, n); toast(g ? `Semáforo marcado · +${g} celus` : 'Semáforo marcado'); }}><i />{nome}</button>
+              <button key={n} className="semaopt" style={{ ['--c' as string]: cor }} aria-label={`${nome}: ${desc}`} onClick={() => { const g = marcarSemaforo(centro, n); toast(g ? `Semáforo marcado. Você ganhou ${g} celus` : 'Semáforo marcado'); }}><i />{nome}</button>
             ))}
           </div>
           <label className="check" style={{ marginTop: 10 }}><input type="checkbox" checked={colorir} onChange={(e) => setColorir(e.target.checked)} /><span>Colorir o mapa</span></label>
@@ -107,11 +117,13 @@ export function MapPage() {
   const [notaMin, setNotaMin] = useState(0);
   const [mudarPonto, setMudarPonto] = useState(false);
   const [colorir, setColorir] = useState(false);
+  const [lista, setLista] = useState(false);
+  const [sel, setSel] = useState<string | null>(null);
 
   useEffect(() => { if (gps && seguindoGps) setCentro(gps); }, [gps, seguindoGps]);
 
   const termo = semAcento(busca.trim());
-  const lista = useMemo(() => anuncios
+  const todos = useMemo(() => anuncios
     .filter((a) => !cat || a.categoria === cat)
     .filter((a) => !sub || a.subcategoria === sub)
     .filter((a) => !prof || a.profissao === prof)
@@ -121,94 +133,135 @@ export function MapPage() {
     .filter((a) => !termo || semAcento(`${a.titulo} ${a.descricao} ${a.bairro} ${nomeSub(a)} ${CATEGORIAS[a.categoria].nome}`).includes(termo))
     .map((a) => ({ a, d: distanciaKm(centro, a) }))
     .sort((x, y) => x.d - y.d), [anuncios, cat, sub, prof, comod, precoMax, notaMin, termo, centro]);
-  const noRaio = lista.filter((x) => x.d <= raio);
-  const nFiltros = comod.length + (precoMax ? 1 : 0) + (notaMin ? 1 : 0);
+  const noRaio = todos.filter((x) => x.d <= raio);
+  const nFiltros = comod.length + (precoMax ? 1 : 0) + (notaMin ? 1 : 0) + (raio !== 1.5 ? 1 : 0);
+  const escolhido = noRaio.find((x) => x.a.id === sel) ?? todos.find((x) => x.a.id === sel);
 
-  const escolher = (k: Categoria) => { setCat(cat === k ? null : k); setSub(null); setProf(null); };
+  const escolher = (k: Categoria | null) => { setCat(cat === k ? null : k); setSub(null); setProf(null); setSel(null); };
+  const limpar = () => { setComod([]); setPrecoMax(0); setNotaMin(0); setRaio(1.5); };
 
   return (
-    <>
-      <h1>Do que você precisa agora?</h1>
-      <div className="busca">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-        <input id="busca" type="search" placeholder="Buscar: vestiário, eletricista, garagem…" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar" />
-      </div>
-
-      <div className="row" style={{ margin: '12px 0 8px', flexWrap: 'nowrap' }}>
-        <span className="meta sp">Uma categoria por vez, ou tudo.</span>
-        <button className="btn sm ghost" disabled={!cat} onClick={() => { setCat(null); setSub(null); setProf(null); }}>Ver tudo</button>
-      </div>
-      <div className="cats">
-        {ORDEM_CATEGORIAS.map((k) => (
-          <button key={k} className="cat" style={{ ['--c' as string]: CATEGORIAS[k].cor }} aria-pressed={cat === k} onClick={() => escolher(k)}><i />{CATEGORIAS[k].curto ?? CATEGORIAS[k].nome}</button>
-        ))}
-      </div>
-      {cat && (
-        <div className="chips" style={{ marginTop: 12 }}>
-          {Object.entries(CATEGORIAS[cat].subs).map(([k, n]) => <button key={k} className="chip" aria-pressed={sub === k} onClick={() => { setSub(sub === k ? null : k); setProf(null); }}>{n}</button>)}
-        </div>
-      )}
-      {cat === 'servicos' && sub && (
-        <div className="chips" style={{ marginTop: 8 }}>
-          {Object.entries(PROFISSOES[sub]).map(([k, n]) => <button key={k} className="chip" aria-pressed={prof === k} onClick={() => setProf(prof === k ? null : k)}>{n}</button>)}
-        </div>
-      )}
-
-      <details className="box painel" open={filtros} onToggle={(e) => setFiltros((e.target as HTMLDetailsElement).open)}>
-        <summary>Mais filtros{nFiltros ? <span className="coin" style={{ marginLeft: 8 }}>{nFiltros}</span> : null}</summary>
-        <div className="chips" style={{ marginTop: 12 }}>
-          {Object.entries(COMODIDADES).map(([k, n]) => <button key={k} className="chip" aria-pressed={comod.includes(k)} onClick={() => setComod(comod.includes(k) ? comod.filter((x) => x !== k) : [...comod, k])}>{n}</button>)}
-        </div>
-        <div className="grid2" style={{ marginTop: 12 }}>
-          <label className="campo">Preço até<select value={precoMax} onChange={(e) => setPrecoMax(Number(e.target.value))}>{[0, 5, 10, 20, 50, 100, 500, 2000].map((v) => <option key={v} value={v}>{v ? `R$ ${v}` : 'Qualquer'}</option>)}</select></label>
-          <label className="campo">Nota mínima<select value={notaMin} onChange={(e) => setNotaMin(Number(e.target.value))}>{[0, 4, 4.5].map((v) => <option key={v} value={v}>{v ? `★ ${virgula(v)} ou mais` : 'Qualquer'}</option>)}</select></label>
-        </div>
-      </details>
-
-      <div className="row" style={{ marginTop: 14 }}>
-        <span className="meta">Raio: <span className="num">{formatarDistancia(raio)}</span></span>
-      </div>
-      <input type="range" min={0.3} max={5} step={0.1} value={raio} onChange={(e) => setRaio(Number(e.target.value))} aria-label="Raio de busca" />
-
-      <div className="mapbox">
+    <div className="mapa-tela">
+      <div className="mapa-fundo">
         <MapContainer center={[centro.lat, centro.lng]} zoom={14} zoomControl={false} attributionControl>
           <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
           <SeguirCentro centro={centro} />
           <CliqueParaMover ativo={mudarPonto} onMover={(p) => { setCentro(p); setSeguindoGps(false); setMudarPonto(false); toast('Ponto de busca atualizado'); }} />
+          <FecharAoTocar onToque={() => setSel(null)} />
           {colorir && <CamadaSemaforo centro={centro} />}
-          <Circle center={[centro.lat, centro.lng]} radius={raio * 1000} pathOptions={{ color: '#4C8DFF', weight: 1.5, fillColor: '#4C8DFF', fillOpacity: 0.08 }} />
-          <Marker position={[centro.lat, centro.lng]} icon={iconeEu} />
-          {lista.map(({ a, d }) => (
-            <Marker key={a.id} position={[a.lat, a.lng]} icon={iconePin(a, d > raio)}
-              eventHandlers={{ click: () => document.getElementById(`a-${a.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
+          <Circle center={[centro.lat, centro.lng]} radius={raio * 1000} pathOptions={{ color: '#4C8DFF', weight: 1, opacity: 0.7, dashArray: '2 6', fillColor: '#4C8DFF', fillOpacity: 0.06 }} interactive={false} />
+          <Marker position={[centro.lat, centro.lng]} icon={iconeEu} interactive={false} />
+          {todos.map(({ a, d }) => (
+            <Marker key={a.id} position={[a.lat, a.lng]} icon={iconePin(a, d > raio, a.id === sel)} zIndexOffset={a.id === sel ? 1000 : 0}
+              eventHandlers={{ click: () => { setSel(a.id); setLista(false); } }} />
           ))}
         </MapContainer>
-        <div className="mapcount"><span className="coin">{noRaio.length} no raio</span></div>
-        <Semaforo centro={centro} colorir={colorir} setColorir={setColorir} />
-        <div className="mapbtns">
-          <button className={mudarPonto ? 'on' : ''} onClick={() => setMudarPonto(!mudarPonto)} aria-label="Mudar ponto de busca" title="Mudar ponto de busca">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
-          </button>
-          {gps && !seguindoGps && <button onClick={() => setSeguindoGps(true)} aria-label="Voltar para minha localização" title="Minha localização"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2l7 19-7-4-7 4z" /></svg></button>}
-        </div>
-        {mudarPonto && <div className="picknote">Toque onde você vai estar</div>}
       </div>
-      <p className="hint" style={{ marginTop: 6 }}>{gps ? (seguindoGps ? 'Usando sua localização.' : 'Usando o ponto que você escolheu.') : 'Sem acesso à sua localização: mostrando o centro da cidade piloto.'}</p>
 
-      <h2>{noRaio.length} {noRaio.length === 1 ? 'lugar' : 'lugares'} até {formatarDistancia(raio)}</h2>
-      <div className="stack">
-        {noRaio.map(({ a, d }) => (
-          <Link key={a.id} id={`a-${a.id}`} to={`/anuncio/${a.id}`} className="box listrow">
-            <Miniatura a={a} />
-            <div>
-              <span className="t">{a.titulo}</span>
-              <span className="meta">{formatarDistancia(d)} · {nomeSub(a)}{a.metragemM2 ? ` · ${a.metragemM2} m²` : ''} · <span className="num">★ {virgula(nota(a))}</span></span>
-              <span className="coin">{rotuloPreco(a)}</span>
-            </div>
-          </Link>
-        ))}
-        {!noRaio.length && <div className="empty">Nada nesse raio{termo ? ` para "${busca}"` : ''}. Aumente o raio, tire filtros ou escolha outra categoria.</div>}
+      <div className="mapa-topo">
+        <div className="row" style={{ flexWrap: 'nowrap', gap: 8 }}>
+          <div className="busca sp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+            <input id="busca" type="search" placeholder="Do que você precisa agora?" value={busca} onChange={(e) => { setBusca(e.target.value); setLista(true); }} aria-label="Buscar" />
+          </div>
+          <button className={`fbtn ${nFiltros ? 'on' : ''}`} onClick={() => setFiltros(true)} aria-label={`Filtros${nFiltros ? `, ${nFiltros} ativos` : ''}`}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+            {nFiltros ? <b>{nFiltros}</b> : null}
+          </button>
+        </div>
+        <div className="trilho" role="group" aria-label="Categoria">
+          <button className="cat" aria-pressed={!cat} onClick={() => escolher(null)}>Tudo</button>
+          {ORDEM_CATEGORIAS.map((k) => (
+            <button key={k} className="cat" style={{ ['--c' as string]: CATEGORIAS[k].cor }} aria-pressed={cat === k} onClick={() => escolher(k)}>
+              <IconeCategoria c={k} tamanho={15} />{CATEGORIAS[k].curto ?? CATEGORIAS[k].nome}
+            </button>
+          ))}
+        </div>
+        {cat && (
+          <div className="trilho sub">
+            {Object.entries(CATEGORIAS[cat].subs).map(([k, n]) => <button key={k} className="chip" aria-pressed={sub === k} onClick={() => { setSub(sub === k ? null : k); setProf(null); }}>{n}</button>)}
+          </div>
+        )}
+        {cat === 'servicos' && sub && (
+          <div className="trilho sub">
+            {Object.entries(PROFISSOES[sub]).map(([k, n]) => <button key={k} className="chip" aria-pressed={prof === k} onClick={() => setProf(prof === k ? null : k)}>{n}</button>)}
+          </div>
+        )}
       </div>
-    </>
+
+      <div className="mapa-lado">
+        <Semaforo centro={centro} colorir={colorir} setColorir={setColorir} />
+        <button className={`mbtn ${mudarPonto ? 'on' : ''}`} onClick={() => setMudarPonto(!mudarPonto)} aria-label="Mudar ponto de busca" title="Mudar ponto de busca">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+        </button>
+        {gps && !seguindoGps && <button className="mbtn" onClick={() => setSeguindoGps(true)} aria-label="Voltar para minha localização" title="Minha localização"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 2l7 19-7-4-7 4z" /></svg></button>}
+      </div>
+      {mudarPonto && <div className="picknote">Toque no mapa onde você vai estar</div>}
+
+      <section className={`folha ${lista ? 'aberta' : ''}`} aria-label="Lugares encontrados">
+        {escolhido && !lista ? (
+          <div className="folha-sel">
+            <Cartao a={escolhido.a} d={escolhido.d} />
+            <button className="folha-mais" onClick={() => setLista(true)}>Ver os {noRaio.length} lugares no raio</button>
+          </div>
+        ) : (
+          <>
+            <button className="folha-alca" onClick={() => setLista(!lista)} aria-expanded={lista}>
+              <i />
+              <span className="row" style={{ flexWrap: 'nowrap', width: '100%' }}>
+                <b className="sp">{noRaio.length} {noRaio.length === 1 ? 'lugar' : 'lugares'} até {formatarDistancia(raio)}</b>
+                <span className="hint">{lista ? 'Ver mapa' : 'Ver lista'}</span>
+              </span>
+              {!lista && <span className="hint folha-sub">{gps ? (seguindoGps ? 'Perto de você' : 'Perto do ponto que você escolheu') : 'Sem sua localização: centro da cidade piloto'}</span>}
+            </button>
+            <div className="folha-lista">
+              {noRaio.map(({ a, d }) => <Cartao key={a.id} a={a} d={d} />)}
+              {!noRaio.length && <div className="empty">Nada nesse raio{termo ? ` para "${busca}"` : ''}. Aumente o raio nos filtros ou escolha outra categoria.</div>}
+            </div>
+          </>
+        )}
+      </section>
+
+      {filtros && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Filtros" onClick={(e) => e.target === e.currentTarget && setFiltros(false)}>
+          <div className="modal-in">
+            <div className="row" style={{ flexWrap: 'nowrap', marginBottom: 6 }}>
+              <h2 className="sp" style={{ margin: 0 }}>Filtros</h2>
+              <button className="x" onClick={() => setFiltros(false)} aria-label="Fechar">×</button>
+            </div>
+            <div className="flabel row" style={{ marginTop: 14 }}><span className="sp">Distância</span><span className="num">até {formatarDistancia(raio)}</span></div>
+            <input type="range" min={0.3} max={5} step={0.1} value={raio} onChange={(e) => setRaio(Number(e.target.value))} aria-label="Raio de busca" />
+            <div className="flabel" style={{ marginTop: 18 }}>O lugar precisa ter</div>
+            <div className="chips">
+              {Object.entries(COMODIDADES).map(([k, n]) => <button key={k} className="chip" aria-pressed={comod.includes(k)} onClick={() => setComod(comod.includes(k) ? comod.filter((x) => x !== k) : [...comod, k])}>{n}</button>)}
+            </div>
+            <div className="grid2" style={{ marginTop: 18 }}>
+              <label className="campo">Preço até<select value={precoMax} onChange={(e) => setPrecoMax(Number(e.target.value))}>{[0, 5, 10, 20, 50, 100, 500, 2000].map((v) => <option key={v} value={v}>{v ? `R$ ${v}` : 'Qualquer'}</option>)}</select></label>
+              <label className="campo">Nota mínima<select value={notaMin} onChange={(e) => setNotaMin(Number(e.target.value))}>{[0, 4, 4.5].map((v) => <option key={v} value={v}>{v ? `${virgula(v)} ou mais` : 'Qualquer'}</option>)}</select></label>
+            </div>
+            <div className="row" style={{ marginTop: 22, flexWrap: 'nowrap' }}>
+              <button className="btn ghost" onClick={limpar} disabled={!nFiltros}>Limpar</button>
+              <button className="btn" onClick={() => { setFiltros(false); setLista(true); }}>Ver {noRaio.length} {noRaio.length === 1 ? 'lugar' : 'lugares'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Cartao({ a, d }: { a: Anuncio; d: number }) {
+  return (
+    <Link id={`a-${a.id}`} to={`/anuncio/${a.id}`} className="cartao">
+      <Miniatura a={a} />
+      <div className="cartao-txt">
+        <span className="t">{a.titulo}</span>
+        <span className="meta">{nomeSub(a)} a {formatarDistancia(d)}{a.metragemM2 ? `, ${a.metragemM2} m²` : ''}</span>
+        <span className="row" style={{ gap: 10 }}>
+          <span className="preco">{rotuloPreco(a)}</span>
+          <span className="nota"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg>{virgula(nota(a))}</span>
+        </span>
+      </div>
+    </Link>
   );
 }
