@@ -3,7 +3,12 @@
 import type { Anuncio } from './types';
 import { centroPiloto } from '../lib/geo';
 
-type Semente = Omit<Anuncio, 'lat' | 'lng' | 'comodidades' | 'extras' | 'limpezaInclusa' | 'totalSonhos'> & {
+export function agendaPadrao(tipo: Anuncio['tipoPreco']): Anuncio['agenda'] {
+  const dia: [number, number] = tipo === 'pacote' ? [7 * 60, 23 * 60] : [0, 24 * 60];
+  return { dias: [dia, dia, dia, dia, dia, dia, dia], bloqueios: [] };
+}
+
+type Semente = Omit<Anuncio, 'lat' | 'lng' | 'comodidades' | 'extras' | 'limpezaInclusa' | 'totalSonhos' | 'donoId' | 'status' | 'fotos' | 'agenda' | 'criadoEm'> & {
   dx: number; dy: number; comodidades?: string[]; extras?: Anuncio['extras']; limpezaInclusa?: boolean; totalSonhos?: number;
 };
 
@@ -30,6 +35,8 @@ export function anunciosFicticios(): Anuncio[] {
   const kmLng = 1 / (111.32 * Math.cos((c.lat * Math.PI) / 180));
   return S.map(({ dx, dy, ...a }) => ({
     comodidades: [], extras: [], limpezaInclusa: false, totalSonhos: 0,
+    donoId: 'celus-demo', status: 'aprovado' as const, fotos: [], criadoEm: 0,
+    agenda: agendaPadrao(a.tipoPreco),
     ...a,
     lat: c.lat - dy * kmLat,
     lng: c.lng + dx * kmLng,

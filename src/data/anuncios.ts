@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { anunciosFicticios } from './seed';
+import { agendaPadrao, anunciosFicticios } from './seed';
 import type { Anuncio, Categoria } from './types';
 
 type Linha = {
@@ -9,11 +9,12 @@ type Linha = {
   por_pessoa: boolean; capacidade: number; metragem_m2: number | null; comodidades: string[];
   extras: { nome: string; preco: number }[]; tipo_acesso: Anuncio['tipoAcesso'] | null; responsavel_local: string | null;
   manual_bons_modos: string; limpeza_inclusa: boolean; nota_qualidade: number | null; nota_custo_beneficio: number | null;
-  total_avaliacoes: number; total_sonhos: number;
+  total_avaliacoes: number; total_sonhos: number; dono_id: string; fotos: string[]; criado_em: string;
 };
 
 const daLinha = (r: Linha): Anuncio => ({
-  id: r.id, categoria: r.categoria, subcategoria: r.subcategoria, profissao: r.profissao ?? undefined,
+  id: r.id, donoId: r.dono_id, status: 'aprovado', fotos: r.fotos ?? [], agenda: agendaPadrao(r.tipo_preco), criadoEm: Date.parse(r.criado_em),
+  categoria: r.categoria, subcategoria: r.subcategoria, profissao: r.profissao ?? undefined,
   titulo: r.titulo, descricao: r.descricao, bairro: r.bairro ?? '', lat: r.lat, lng: r.lng,
   tipoPreco: r.tipo_preco, pacotes: r.pacotes ?? undefined, preco: r.preco ?? undefined, unidadePreco: r.unidade_preco ?? undefined,
   porPessoa: r.por_pessoa, capacidade: r.capacidade, metragemM2: r.metragem_m2 ?? undefined, comodidades: r.comodidades,
@@ -23,7 +24,7 @@ const daLinha = (r: Linha): Anuncio => ({
   totalAvaliacoes: r.total_avaliacoes, totalSonhos: r.total_sonhos,
 });
 
-/** Anúncios aprovados. Usa o Supabase quando configurado; senão, os dados fictícios. */
+/** (Para a troca pelo Supabase) Anúncios aprovados. Usa o Supabase quando configurado; senão, os dados fictícios. */
 export async function listarAnuncios(): Promise<{ anuncios: Anuncio[]; ficticio: boolean }> {
   if (!supabase) return { anuncios: anunciosFicticios(), ficticio: true };
   const { data, error } = await supabase.from('anuncios_mapa').select('*');

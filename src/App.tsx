@@ -1,19 +1,40 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AnuncioPage } from './pages/AnuncioPage';
-import { EmBreve } from './pages/EmBreve';
+import { ChatPage } from './pages/ChatPage';
+import { Entrar, Verificar } from './pages/Entrar';
+import { FeedPage, PostarStory } from './pages/FeedPage';
 import { MapPage } from './pages/MapPage';
+import { CelusPage, PerfilPage } from './pages/PerfilPage';
+import { Anunciar, AgendaPage, Curadoria, Painel } from './pages/Renda';
+import { ReservaPage, UsoPage } from './pages/ReservaPage';
+import { useUsuario } from './store/db';
+
+function SoDeslogado({ children }: { children: React.ReactNode }) {
+  return useUsuario() ? <Navigate to="/" replace /> : <>{children}</>;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="entrar" element={<SoDeslogado><Entrar /></SoDeslogado>} />
+        <Route path="verificar" element={<Verificar />} />
         <Route element={<Layout />}>
           <Route index element={<MapPage />} />
           <Route path="anuncio/:id" element={<AnuncioPage />} />
-          <Route path="feed" element={<EmBreve titulo="Feed" etapa={6} texto="Stories de 3 horas e posts dos espaços chegam na etapa 6." />} />
-          <Route path="chat" element={<EmBreve titulo="Chat do quadrante" etapa={7} texto="A sala da sua região, com mensagens que somem em 10 minutos, chega na etapa 7." />} />
-          <Route path="perfil" element={<EmBreve titulo="Perfil" etapa={2} texto="Login, reservas, livro dos sonhos e celus chegam a partir da etapa 2." />} />
+          <Route path="reserva/:id" element={<ReservaPage />} />
+          <Route path="uso/:id" element={<UsoPage />} />
+          <Route path="story/:id" element={<PostarStory />} />
+          <Route path="feed" element={<FeedPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="perfil" element={<PerfilPage />} />
+          <Route path="celus" element={<CelusPage />} />
+          <Route path="renda" element={<Painel />} />
+          <Route path="renda/anunciar" element={<Anunciar />} />
+          <Route path="renda/agenda/:id" element={<AgendaPage />} />
+          <Route path="renda/curadoria" element={<Curadoria />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

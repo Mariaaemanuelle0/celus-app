@@ -1,17 +1,7 @@
-import { useEffect, useState } from 'react';
-import { listarAnuncios } from './anuncios';
-import type { Anuncio } from './types';
+import { useDB } from '../store/db';
 
-let cache: { anuncios: Anuncio[]; ficticio: boolean } | null = null;
-
+/** Anúncios aprovados (modo demonstração: vêm do banco local; com Supabase: do servidor). */
 export function useAnuncios() {
-  const [estado, setEstado] = useState(cache);
-  const [erro, setErro] = useState<string | null>(null);
-  useEffect(() => {
-    if (cache) return;
-    listarAnuncios()
-      .then((r) => { cache = r; setEstado(r); })
-      .catch((e: Error) => setErro(e.message));
-  }, []);
-  return { anuncios: estado?.anuncios ?? [], ficticio: estado?.ficticio ?? false, carregando: !estado && !erro, erro };
+  const anuncios = useDB((d) => d.anuncios);
+  return { anuncios: anuncios.filter((a) => a.status === 'aprovado'), todos: anuncios, ficticio: true, carregando: false, erro: null as string | null };
 }
