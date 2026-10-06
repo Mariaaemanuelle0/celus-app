@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  worker: { format: 'es' },
   plugins: [
     react(),
     VitePWA({

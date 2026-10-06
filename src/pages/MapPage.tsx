@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Circle, MapContainer, Marker, Rectangle, TileLayer, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { CATEGORIAS, COMODIDADES, ORDEM_CATEGORIAS, PROFISSOES } from '../data/catalogo';
 import type { Anuncio, Categoria } from '../data/types';
 import { emDestaque, useAnuncios } from '../data/useAnuncios';
 import { IconeCategoria, Miniatura, toast, useLocalizacao } from '../components/ui';
+import { Mapa, type Celula, type Pino } from '../components/Mapa';
 import { centroPiloto, distanciaKm, formatarDistancia, type Ponto } from '../lib/geo';
 import { brl, nota, precoBase, rotuloPreco, virgula } from '../lib/format';
 import { SLOTS, slotDe } from '../lib/regras';
@@ -14,8 +12,6 @@ import { COR_CSS, leitura } from '../lib/semaforo';
 import { marcarSemaforo } from '../store/acoes';
 import { useDB } from '../store/db';
 
-const TILE_URL = (import.meta.env.VITE_MAP_TILE_URL as string) || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTR = (import.meta.env.VITE_MAP_ATTRIBUTION as string) || '&copy; OpenStreetMap';
 
 const nomeSub = (a: Anuncio) =>
   a.categoria === 'servicos' && a.profissao ? PROFISSOES[a.subcategoria]?.[a.profissao] ?? '' : CATEGORIAS[a.categoria].subs[a.subcategoria] ?? '';
@@ -27,48 +23,19 @@ function pinPreco(a: Anuncio) {
   if (v >= 1000) return `R$ ${virgula(v / 1000, v % 1000 ? 1 : 0).replace(',0', '')} mil`;
   return brl(v);
 }
-function iconePin(a: Anuncio, longe: boolean, ativo: boolean) {
-  const cor = CATEGORIAS[a.categoria].cor;
-  return L.divIcon({ className: '', html: `<div class="pin${longe ? ' far' : ''}${ativo ? ' on' : ''}${emDestaque(a) ? ' dest' : ''}" style="--c:${cor}"><i></i>${pinPreco(a)}</div>`, iconSize: [0, 0] });
-}
-const iconeEu = L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
-
-function SeguirCentro({ centro }: { centro: Ponto }) {
-  const map = useMap();
-  useEffect(() => { map.setView([centro.lat, centro.lng]); }, [centro, map]);
-  return null;
-}
-function FecharAoTocar({ onToque }: { onToque: () => void }) {
-  const map = useMap();
-  useEffect(() => { map.on('click', onToque); return () => { map.off('click', onToque); }; }, [map, onToque]);
-  return null;
-}
-function CliqueParaMover({ ativo, onMover }: { ativo: boolean; onMover: (p: Ponto) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!ativo) return;
-    const h = (e: L.LeafletMouseEvent) => onMover({ lat: e.latlng.lat, lng: e.latlng.lng });
-    map.on('click', h);
-    map.getContainer().style.cursor = 'crosshair';
-    return () => { map.off('click', h); map.getContainer().style.cursor = ''; };
-  }, [ativo, map, onMover]);
-  return null;
-}
-
-/** Camada que pinta as células do semáforo ao redor do ponto de busca. */
-function CamadaSemaforo({ centro }: { centro: Ponto }) {
-  const marcas = useDB((d) => d.semaforo);
+/** Células do semáforo ao redor do ponto de busca, prontas para pintar no mapa. */
+function celulasSemaforo(centro: Ponto, marcas: Parameters<typeof leitura>[2]): Celula[] {
   const slot = slotDe();
   const dLat = 0.8 / 110.574, dLng = 0.8 / (111.32 * Math.cos((centro.lat * Math.PI) / 180));
   const i0 = Math.floor(centro.lat / dLat), j0 = Math.floor(centro.lng / dLng);
-  const cells = [];
+  const out: Celula[] = [];
   for (let i = i0 - 3; i <= i0 + 3; i++) for (let j = j0 - 3; j <= j0 + 3; j++) {
-    const p = { lat: (i + 0.5) * dLat, lng: (j + 0.5) * dLng };
-    const l = leitura(p, slot, marcas);
+    const l = leitura({ lat: (i + 0.5) * dLat, lng: (j + 0.5) * dLng }, slot, marcas);
     const cor = { verde: '#3DD68C', amarelo: '#F5B44A', vermelho: '#FF6B6B', sem: '#8E9AB4' }[l.cor];
-    cells.push(<Rectangle key={`${i}_${j}`} bounds={[[i * dLat, j * dLng], [(i + 1) * dLat, (j + 1) * dLng]]} pathOptions={{ stroke: false, fillColor: cor, fillOpacity: l.cor === 'sem' ? 0.05 : 0.18 }} interactive={false} />);
+    const [la, lo, la2, lo2] = [i * dLat, j * dLng, (i + 1) * dLat, (j + 1) * dLng];
+    out.push({ cor, opacidade: l.cor === 'sem' ? 0.04 : 0.2, coords: [[lo, la], [lo2, la], [lo2, la2], [lo, la2], [lo, la]] });
   }
-  return <>{cells}</>;
+  return out;
 }
 
 function Semaforo({ centro, colorir, setColorir }: { centro: Ponto; colorir: boolean; setColorir: (v: boolean) => void }) {
@@ -135,6 +102,12 @@ export function MapPage() {
     .sort((x, y) => x.d - y.d), [anuncios, cat, sub, prof, comod, precoMax, notaMin, termo, centro]);
   const noRaio = todos.filter((x) => x.d <= raio).sort((x, y) => Number(emDestaque(y.a)) - Number(emDestaque(x.a)));
   const nFiltros = comod.length + (precoMax ? 1 : 0) + (notaMin ? 1 : 0) + (raio !== 1.5 ? 1 : 0);
+  const marcas = useDB((d) => d.semaforo);
+  const celulas = useMemo(() => (colorir ? celulasSemaforo(centro, marcas) : []), [colorir, centro, marcas]);
+  const pinos = useMemo<Pino[]>(() => todos.map(({ a, d }) => ({
+    id: a.id, lat: a.lat, lng: a.lng, cor: CATEGORIAS[a.categoria].cor, html: `<i></i>${pinPreco(a)}`,
+    classe: [d > raio ? 'far' : '', a.id === sel ? 'on' : '', emDestaque(a) ? 'dest' : ''].join(' '), z: a.id === sel ? 10 : emDestaque(a) ? 5 : 1,
+  })), [todos, raio, sel]);
   const escolhido = noRaio.find((x) => x.a.id === sel) ?? todos.find((x) => x.a.id === sel);
 
   const escolher = (k: Categoria | null) => { setCat(cat === k ? null : k); setSub(null); setProf(null); setSel(null); };
@@ -143,19 +116,11 @@ export function MapPage() {
   return (
     <div className="mapa-tela">
       <div className="mapa-fundo">
-        <MapContainer center={[centro.lat, centro.lng]} zoom={14} zoomControl={false} attributionControl>
-          <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
-          <SeguirCentro centro={centro} />
-          <CliqueParaMover ativo={mudarPonto} onMover={(p) => { setCentro(p); setSeguindoGps(false); setMudarPonto(false); toast('Ponto de busca atualizado'); }} />
-          <FecharAoTocar onToque={() => setSel(null)} />
-          {colorir && <CamadaSemaforo centro={centro} />}
-          <Circle center={[centro.lat, centro.lng]} radius={raio * 1000} pathOptions={{ color: '#4C8DFF', weight: 1, opacity: 0.7, dashArray: '2 6', fillColor: '#4C8DFF', fillOpacity: 0.06 }} interactive={false} />
-          <Marker position={[centro.lat, centro.lng]} icon={iconeEu} interactive={false} />
-          {todos.map(({ a, d }) => (
-            <Marker key={a.id} position={[a.lat, a.lng]} icon={iconePin(a, d > raio, a.id === sel)} zIndexOffset={a.id === sel ? 1000 : 0}
-              eventHandlers={{ click: () => { setSel(a.id); setLista(false); } }} />
-          ))}
-        </MapContainer>
+        <Mapa centro={centro} raioKm={raio} celulas={celulas} mudarPonto={mudarPonto}
+          pinos={pinos}
+          onMover={(p) => { setCentro(p); setSeguindoGps(false); setMudarPonto(false); toast('Ponto de busca atualizado'); }}
+          onPino={(id) => { setSel(id); setLista(false); }}
+          onFundo={() => setSel(null)} />
       </div>
 
       <div className="mapa-topo">

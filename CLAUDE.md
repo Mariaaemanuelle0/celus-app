@@ -17,7 +17,7 @@ Leia antes de qualquer tarefa:
 
 ## Stack
 - Front: React + TypeScript + Vite, React Router, PWA (vite-plugin-pwa).
-- Mapa: Leaflet. Em desenvolvimento usa tiles do OpenStreetMap; em produção trocar para Mapbox (variável `VITE_MAP_TILE_URL`).
+- Mapa: MapLibre GL (vetorial, gira e inclina), estilo próprio em `src/lib/estiloMapa.ts` com dados do OpenStreetMap via OpenFreeMap. Para Mapbox, definir `VITE_MAP_STYLE_URL`.
 - Back: Supabase (auth, Postgres com PostGIS, storage). Schema em `supabase/migrations/`.
 - Sem Supabase configurado, o app usa dados fictícios de `src/data/seed.ts`.
 - Pagamento (etapa 4): Pagar.me ou Stripe com split. Ainda não integrado.

@@ -73,11 +73,14 @@ img.thumb { object-fit: cover; }
 
 /* ================= Mapa (tela cheia) ================= */
 .mapa-tela { position: fixed; z-index: 1; left: 50%; transform: translateX(-50%); width: min(100%, 480px); top: calc(var(--top-h) + env(safe-area-inset-top, 0px)); bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px)); overflow: hidden; background: #050A14; }
-.mapa-fundo, .mapa-fundo .leaflet-container { position: absolute; inset: 0; background: #050A14; }
-.mapa-fundo .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(.78) contrast(.92) saturate(.45); }
-.leaflet-control-attribution { background: rgba(3,5,10,.6) !important; color: var(--muted) !important; font-size: 9px !important; }
-.leaflet-control-attribution a { color: var(--muted) !important; }
-.mapa-fundo .leaflet-bottom { bottom: 112px; }
+.mapa-fundo, .mapa-gl { position: absolute; inset: 0; background: #060B16; }
+.mapa-gl-in { width: 100%; height: 100%; background: #060B16; }
+.mapa-falha { position: absolute; left: 16px; right: 16px; top: 45%; text-align: center; color: var(--muted); font-size: 14px; }
+.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: 104px !important; }
+.maplibregl-ctrl-attrib { background: rgba(3,5,10,.65) !important; color: var(--muted); font-size: 10px; }
+.maplibregl-ctrl-attrib a { color: var(--muted) !important; }
+.maplibregl-ctrl-attrib-button { filter: invert(1) opacity(.6); }
+.pin-alvo { background: none; border: 0; padding: 0; cursor: pointer; }
 
 .mapa-topo { position: absolute; z-index: 1050; left: 0; right: 0; top: 0; padding: 12px 12px 10px; background: linear-gradient(rgba(3,5,10,.92) 55%, rgba(3,5,10,0)); display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .mapa-topo > * { pointer-events: auto; }
@@ -102,11 +105,10 @@ img.thumb { object-fit: cover; }
 .picknote { position: absolute; z-index: 1060; left: 50%; top: 140px; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 10px; white-space: nowrap; }
 
 /* Pins: pílula com o preço e um ponto na cor da categoria */
-.leaflet-div-icon { background: none; border: 0; }
-.pin { position: absolute; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 4px 9px 4px 7px; border-radius: 999px; background: #0D1628; border: 1px solid rgba(255,255,255,.14); color: var(--text); font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: -.03em; box-shadow: 0 4px 12px rgba(0,0,0,.55); transition: transform .15s; }
+.pin { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 4px 9px 4px 7px; border-radius: 999px; background: #0D1628; border: 1px solid rgba(255,255,255,.14); color: var(--text); font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: -.03em; box-shadow: 0 4px 12px rgba(0,0,0,.55); transition: transform .15s; }
 .pin i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
 .pin.far { opacity: .35; }
-.pin.on { background: var(--text); color: var(--bg); border-color: var(--text); transform: translate(-50%, -50%) scale(1.12); }
+.pin.on { background: var(--text); color: var(--bg); border-color: var(--text); transform: scale(1.12); }
 .me { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2.5px solid #fff; box-shadow: 0 0 0 7px rgba(76,141,255,.22); }
 
 /* Semáforo: pequeno, de verdade */
