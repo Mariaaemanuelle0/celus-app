@@ -17,7 +17,8 @@ a { color: var(--accent-2); }
 /* ================= Topo e abas ================= */
 .top { position: sticky; top: 0; z-index: 1000; display: flex; align-items: center; gap: 10px; height: calc(var(--top-h) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 16px 0; background: rgba(3,5,10,.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
 .logo { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--text); text-decoration: none; }
-.logo svg { width: 26px; height: 26px; }
+.logo svg { width: 30px; height: 30px; }
+.logo span, .entrada-topo span { text-transform: uppercase; letter-spacing: .08em; }
 .layer { margin-left: auto; display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .layer button { border: 0; background: none; color: var(--muted); font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 999px; transition: background .2s, color .2s; }
 .layer button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
@@ -186,7 +187,7 @@ img.thumb { object-fit: cover; }
 /* ================= Entrada e formulários ================= */
 .entrada { padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 36px; }
 .entrada-topo { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: 20px; letter-spacing: -.02em; margin-bottom: 18px; }
-.entrada-topo svg { width: 32px; height: 32px; }
+.entrada-topo svg { width: 38px; height: 38px; }
 .entrada-inicio { display: flex; flex-direction: column; gap: 6px; }
 .entrada-h1 { font-size: 30px; line-height: 1.12; letter-spacing: -.035em; margin-top: 6px; }
 .radar { margin: 4px -8px 10px; }
