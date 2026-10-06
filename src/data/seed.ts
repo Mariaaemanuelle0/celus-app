@@ -31,11 +31,19 @@ const S: Semente[] = [
   { id: 's14', categoria: 'servicos', subcategoria: 'pet', profissao: 'passeador', titulo: 'Theo, passeador de cães', descricao: 'Passeio de 40 minutos, até 3 cães.', bairro: 'Disponível agora', dx: -0.6, dy: -0.75, tipoPreco: 'servico', preco: 25, unidadePreco: '/passeio', capacidade: 1, manualBonsModos: 'Manda foto e trajeto no fim.', notaQualidade: 4.9, notaCustoBeneficio: 4.9, totalAvaliacoes: 73 },
 ];
 
+/** Próximo sábado às 22h (a data do evento de exemplo acompanha o calendário). */
+function proximoSabado(): number {
+  const d = new Date(); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); d.setHours(22, 0, 0, 0); return d.getTime();
+}
+
 export function anunciosFicticios(): Anuncio[] {
   const c = centroPiloto();
+  const sab = proximoSabado();
   const kmLat = 1 / 110.574;
   const kmLng = 1 / (111.32 * Math.cos((c.lat * Math.PI) / 180));
-  return S.map(({ dx, dy, ...a }) => ({
+  const evento: Semente = { id: 's17', categoria: 'eventos', subcategoria: 'ingressos', titulo: 'Calourada da Atlética', descricao: 'Festa de boas-vindas dos calouros com DJ, open de água e área externa. Proibido para menores de 18.', bairro: 'Jardim', dx: 1.1, dy: -0.35, tipoPreco: 'ingresso', capacidade: 400, manualBonsModos: 'Leve documento com foto. Meia-entrada: carteirinha estudantil válida na entrada.', notaQualidade: 4.7, notaCustoBeneficio: 4.6, totalAvaliacoes: 12, totalSonhos: 40 };
+  const extras = [{ ...evento, evento: { inicio: sab, fim: sab + 6 * 3600_000 }, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 150, vendidos: 132, meia: true }, { id: 'l2', nome: '2º lote', preco: 45, qtd: 250, vendidos: 0, meia: true }] }];
+  return [...S, ...extras].map(({ dx, dy, ...a }) => ({
     comodidades: [], extras: [], limpezaInclusa: false, totalSonhos: 0,
     donoId: 'celus-demo', status: 'aprovado' as const, fotos: [], criadoEm: 0,
     agenda: agendaPadrao(a.tipoPreco),

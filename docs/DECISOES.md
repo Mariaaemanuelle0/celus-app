@@ -26,6 +26,20 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Ficar curto só com entrada independente; comunicação pelo uso real (descansar, esperar voo, trocar de roupa, viagem a trabalho) para não lembrar motel.
 - Reservar no Ficar exige identidade verificada.
 
+## Ingressos de eventos
+- Eventos ganham venda de ingressos pelo app: foco em organizadores e festas universitárias (atléticas, calouradas).
+- Em Eventos, "Ingressos à venda" convive com "Espaço para festa/inauguração/show" (aluguel de espaço).
+- Organizador cria o evento com data, duração e lotes (nome, preço, quantidade, com ou sem meia-entrada). A curadoria aprova.
+- Quem compra paga taxa de serviço de 10% (proposta a validar); o organizador recebe o valor inteiro dos ingressos, D+1 após o evento.
+- Até 6 ingressos por compra. Cada ingresso tem código único que vale uma entrada; a portaria do evento valida no app (código repetido é barrado).
+- Meia-entrada: comprador declara que apresenta o documento; organizador confere na entrada.
+- Cancelamento pelo comprador: até 7 dias após a compra, com mais de 48 h para o evento. Evento cancelado pelo organizador: reembolso total, incluindo a taxa.
+- Eventos passados saem do mapa e as compras viram concluídas, liberando avaliação.
+
+## Mapa
+- Mapa vetorial (MapLibre) com estilo próprio da Celus, inclinação e prédios em 3D, dados do OpenStreetMap via OpenFreeMap (gratuito). Mapbox pode substituir depois só trocando a configuração.
+- Navegação curva a curva fica com Waze e Google Maps (botões "Como chegar").
+
 ## Cadastro assistido (lançamento)
 - No início, a fundadora visita os locais, oferece a Celus e cadastra no local, com o celular, para o anfitrião.
 - No app: modo "Cadastro assistido" para a equipe Celus. O pin fica onde a pessoa está; o anfitrião recebe um código (por WhatsApp) e assume o anúncio ao criar a conta com o e-mail informado.
@@ -124,5 +138,6 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Celus são pontos: não valem dinheiro, não compram, não vendem, não transferem.
 - Nota fiscal: anfitrião e profissional sobre os próprios ganhos; Celus sobre a comissão.
 - Imóveis: sem comissão sobre venda; corretagem com o sócio que tem CRECI.
+- Ingressos: regras de meia-entrada e cota obrigatória (lei federal), direito de arrependimento em compra online, responsabilidade do organizador por alvarás, segurança, capacidade e proibição de menores; taxa de serviço destacada no preço.
 - Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
 - LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).

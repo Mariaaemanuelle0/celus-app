@@ -415,3 +415,25 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 
 .rota { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .rota .hint { flex: 1; }
+
+/* Eventos e ingressos */
+.data-evento { margin: -2px 0 4px; font-weight: 600; color: var(--accent-2); text-transform: capitalize; }
+.lote { padding: 12px 14px; }
+.lote.esgotado { opacity: .55; }
+.lote-linha { display: flex; align-items: center; gap: 10px; padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--line); font-size: 14.5px; }
+.lote-linha .preco { margin-left: 6px; color: var(--text-2); }
+.passo-qtd { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line-2); border-radius: 12px; padding: 3px; }
+.passo-qtd button { width: 34px; height: 34px; border: 0; border-radius: 9px; background: var(--surface-2); color: var(--text); font-size: 18px; }
+.passo-qtd button:disabled { opacity: .35; }
+.passo-qtd b { min-width: 24px; text-align: center; font-weight: 500; }
+.ingresso { display: flex; gap: 14px; padding: 16px; border-radius: var(--r); background: radial-gradient(120% 120% at 100% 0%, rgba(240,122,168,.16), transparent 60%), var(--surface); border: 1px dashed rgba(240,122,168,.5); }
+.ingresso .code { font-size: 30px; letter-spacing: .16em; margin: 2px 0; }
+.ingresso.usado { opacity: .5; border-style: solid; }
+.vendas { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.vendas-linha { position: relative; display: flex; gap: 8px; font-size: 13.5px; padding-bottom: 6px; }
+.vendas-linha i { position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 2px; background: #F07AA8; }
+.vendas-linha::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; background: var(--line); z-index: -1; }
+.portaria { display: flex; gap: 8px; margin-top: 16px; }
+.portaria input { font-size: 24px; letter-spacing: .2em; text-align: center; text-transform: uppercase; }
+.portaria .btn { width: auto; }
+.portaria-res { margin-top: 12px; font-size: 15px; }

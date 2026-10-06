@@ -4,15 +4,15 @@ import { ACESSO, CATEGORIAS, COMODIDADES, PROFISSOES } from '../data/catalogo';
 import type { Anuncio, Extra } from '../data/types';
 import { IconeCategoria, Miniatura, Moeda, Voltar, toast, useLocalizacao } from '../components/ui';
 import { StoryRing } from '../components/Stories';
-import { brl, rotuloHoras, virgula } from '../lib/format';
+import { brl, dataEvento, rotuloHoras, virgula } from '../lib/format';
 import { distanciaKm, formatarDistancia } from '../lib/geo';
-import { SLOTS, TAXA_SERVICO, bloqueadoPorConferencia, jornada, slotDe, taxaUsuarioDe } from '../lib/regras';
+import { MAX_INGRESSOS_COMPRA, SLOTS, TAXA_INGRESSO, TAXA_SERVICO, bloqueadoPorConferencia, jornada, slotDe, taxaUsuarioDe } from '../lib/regras';
 import { Pagamento as PagamentoModal } from '../components/Pagamento';
 import { emDestaque } from '../data/useAnuncios';
 import type { Pagamento } from '../store/acoes';
 import { COR_CSS, leitura } from '../lib/semaforo';
 import {
-  alternarSonho, chamarProfissional, checkin, hhmm, podePostar, reservarDiaria, reservarHora, resgatar, storiesVisiveis,
+  alternarSonho, chamarProfissional, comprarIngressos, checkin, hhmm, podePostar, reservarDiaria, reservarHora, resgatar, storiesVisiveis,
 } from '../store/acoes';
 import { carteiraDe, useDB } from '../store/db';
 
@@ -44,6 +44,8 @@ export function AnuncioPage() {
   const [pagando, setPagando] = useState(false);
   const verificado = useDB((d) => d.usuarios[d.sessao ?? '']?.verificacao === 'verificado');
   const temFoto = useDB((d) => !!d.usuarios[d.sessao ?? '']?.foto);
+  const [qtd, setQtd] = useState<Record<string, { inteira: number; meia: number }>>({});
+  const [declaraMeia, setDeclaraMeia] = useState(false);
   const [modoFicar, setModoFicar] = useState<'horas' | 'diarias'>('horas');
   const dono = useDB((d) => (a ? d.usuarios[a.donoId] : undefined));
   const anunciosDoDono = useDB((d) => d.anuncios);
@@ -77,6 +79,10 @@ export function AnuncioPage() {
       if (!inicio || Number.isNaN(inicio)) return setErro('Escolha a data e a hora.');
       if (inicio < Date.now() - 5 * 60_000) return setErro('Escolha um horário a partir de agora.');
     }
+    if (a!.tipoPreco === 'ingresso') {
+      if (!nIngressos) return setErro('Escolha pelo menos um ingresso.');
+      if (temMeia && !declaraMeia) return setErro('Para meia-entrada, confirme que vai apresentar o documento na entrada.');
+    }
     if (!temFoto) return setErro('Coloque uma foto do seu rosto no perfil antes de reservar. Quem recebe você precisa saber que é você.');
     if (bloqueadoPorConferencia(a!)) return setErro('Este espaço está aguardando a conferência do anfitrião. Tente de novo mais tarde.');
     setPagando(true);
@@ -91,12 +97,14 @@ export function AnuncioPage() {
     } else if (tp === 'diaria') {
       const [y, m, d] = checkinData.split('-').map(Number);
       r = reservarDiaria(a!, new Date(y, m - 1, d, 14, 0).getTime(), noites, pessoas, extras, metodo);
+    } else if (a!.tipoPreco === 'ingresso') {
+      r = comprarIngressos(a!, Object.entries(qtd).map(([loteId, q]) => ({ loteId, ...q })), metodo, declaraMeia);
     } else if (a!.categoria === 'servicos') {
       r = chamarProfissional(a!, a!.unidadePreco === '/h' ? horas : 1, metodo, onde);
     }
     if (!r) return;
     if (!r.ok) return setErro(r.erro);
-    toast(a!.categoria === 'servicos' ? 'Chamado enviado' : 'Reserva confirmada');
+    toast(a!.categoria === 'servicos' ? 'Chamado enviado' : a!.tipoPreco === 'ingresso' ? 'Ingressos comprados' : 'Reserva confirmada');
     nav(`/reserva/${r.id}`);
   }
 
@@ -105,7 +113,11 @@ export function AnuncioPage() {
     if (t.every((x) => x === t[0])) return t[0] === '00:00 às 24:00' ? 'Aberto 24 horas' : `Todos os dias, ${t[0]}`;
     return t.map((x, i) => `${DIAS[i]} ${x}`).join(', ');
   })();
-  const total = tp === 'pacote' && pacote ? pacote.preco * pes + taxa + somaExtras
+  const ingressoSub = (a.lotes ?? []).reduce((s2, l) => s2 + (qtd[l.id]?.inteira ?? 0) * l.preco + (qtd[l.id]?.meia ?? 0) * (l.preco / 2), 0);
+  const nIngressos = Object.values(qtd).reduce((s2, q) => s2 + q.inteira + q.meia, 0);
+  const temMeia = Object.values(qtd).some((q) => q.meia > 0);
+  const total = a.tipoPreco === 'ingresso' ? (nIngressos ? Math.round(ingressoSub * (1 + TAXA_INGRESSO) * 100) / 100 : null)
+    : tp === 'pacote' && pacote ? pacote.preco * pes + taxa + somaExtras
     : tp === 'diaria' ? (a.preco ?? 0) * noites * hosp + somaExtras
     : servico ? (a.preco ?? 0) * (a.unidadePreco === '/h' ? horas : 1) + TAXA_SERVICO : null;
   const temComod = Object.keys(COMODIDADES).filter((k) => a.comodidades.includes(k));
@@ -125,13 +137,15 @@ export function AnuncioPage() {
       <div className="ficha">
         <span className="catpill" style={{ ['--c' as string]: cat.cor }}><IconeCategoria c={a.categoria} tamanho={14} />{sub}</span>
         <h1>{a.titulo}</h1>
+        {a.evento && <p className="data-evento">{dataEvento(a.evento.inicio)} até {new Date(a.evento.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
         <p className="meta" style={{ margin: '0 0 10px' }}>{a.bairro}{dist != null ? `, a ${formatarDistancia(dist)} de você` : ''}</p>
         <p className="desc">{a.descricao}</p>
         <div className="fatos">
           <div><b className="num">{virgula(a.notaQualidade)}</b><span>qualidade</span></div>
           <div><b className="num">{virgula(a.notaCustoBeneficio)}</b><span>custo-benefício</span></div>
           <div><b className="num">{a.totalAvaliacoes}</b><span>avaliações</span></div>
-          {a.metragemM2 ? <div><b className="num">{a.metragemM2}</b><span>m²</span></div> : <div><b className="num">{a.totalSonhos}</b><span>sonham</span></div>}
+          {a.lotes ? <div><b className="num">{a.lotes.reduce((s2, l) => s2 + l.vendidos, 0)}</b><span>vão</span></div>
+            : a.metragemM2 ? <div><b className="num">{a.metragemM2}</b><span>m²</span></div> : <div><b className="num">{a.totalSonhos}</b><span>sonham</span></div>}
         </div>
       </div>
 
@@ -170,7 +184,7 @@ export function AnuncioPage() {
         </div>
       )}
 
-      {!servico && (
+      {!servico && a.tipoPreco !== 'ingresso' && (
         <>
           {temComod.length > 0 && (
             <>
@@ -199,10 +213,39 @@ export function AnuncioPage() {
         </>
       )}
 
+      {a.tipoPreco === 'ingresso' && a.lotes && (
+        <>
+          <h2>Ingressos</h2>
+          <div className="stack">{a.lotes.map((l) => {
+            const q = qtd[l.id] ?? { inteira: 0, meia: 0 };
+            const resta = l.qtd - l.vendidos - q.inteira - q.meia;
+            const mudar = (k: 'inteira' | 'meia', d: number) => setQtd({ ...qtd, [l.id]: { ...q, [k]: Math.max(0, q[k] + d) } });
+            const esgotado = l.vendidos >= l.qtd;
+            return (
+              <div key={l.id} className={`box lote ${esgotado ? 'esgotado' : ''}`}>
+                <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp">{l.nome}</b>{esgotado ? <span className="status">Esgotado</span> : l.qtd - l.vendidos <= 20 ? <span className="status pendente">Últimos {l.qtd - l.vendidos}</span> : null}</div>
+                {!esgotado && <>
+                  <div className="lote-linha"><span className="sp">Inteira <span className="preco">{brl(l.preco)}</span></span><Passo n={q.inteira} menos={() => mudar('inteira', -1)} mais={() => resta > 0 && nIngressos < MAX_INGRESSOS_COMPRA && mudar('inteira', 1)} rotulo={`Inteira ${l.nome}`} /></div>
+                  {l.meia && <div className="lote-linha"><span className="sp">Meia-entrada <span className="preco">{brl(l.preco / 2)}</span></span><Passo n={q.meia} menos={() => mudar('meia', -1)} mais={() => resta > 0 && nIngressos < MAX_INGRESSOS_COMPRA && mudar('meia', 1)} rotulo={`Meia ${l.nome}`} /></div>}
+                </>}
+              </div>
+            );
+          })}</div>
+          {temMeia && <label className="check" style={{ marginTop: 12 }}><input id="r-meia" type="checkbox" checked={declaraMeia} onChange={(e) => setDeclaraMeia(e.target.checked)} /><span>Vou apresentar na entrada o documento que dá direito à meia (carteirinha estudantil ou outro previsto em lei).</span></label>}
+          {nIngressos > 0 && (
+            <div className="box resumo">
+              <div className="sumline"><span>{nIngressos} ingresso{nIngressos > 1 ? 's' : ''}</span><span>{brl(ingressoSub)}</span></div>
+              <div className="sumline"><span>Taxa de serviço</span><span>{brl(Math.round(ingressoSub * TAXA_INGRESSO * 100) / 100)}</span></div>
+              <div className="sumline"><span>Total</span><span>{brl(total ?? 0)}</span></div>
+            </div>
+          )}
+          <p className="hint" style={{ marginTop: 8 }}>Até {MAX_INGRESSOS_COMPRA} por compra. Cancelamento com reembolso até 7 dias depois da compra, se faltarem mais de 48 h para o evento.</p>
+        </>
+      )}
       {!servico && !imovel && bloqueadoPorConferencia(a) && <div className="alerta warn" style={{ marginTop: 18 }}><b>Aguardando conferência.</b> Depois de 5 locações seguidas sem ninguém no local, o anfitrião confere o espaço antes de liberar novas reservas.</div>}
       {!servico && !imovel && <SemaforoLocal a={a} marcas={marcas} />}
 
-      <h2>{servico ? 'Como trabalha' : 'Manual de bons modos'}</h2>
+      <h2>{servico ? 'Como trabalha' : a.tipoPreco === 'ingresso' ? 'Regras do evento' : 'Manual de bons modos'}</h2>
       <div className="manual">{a.manualBonsModos}</div>
 
       {/* ---------- Reserva ---------- */}
@@ -290,6 +333,7 @@ export function AnuncioPage() {
       {a.donoId !== uid && (
         <div className="acao-fixa">
           {total != null && <div className="acao-total"><span className="hint">Total</span><b className="num">{brl(total)}</b></div>}
+          {a.tipoPreco === 'ingresso' && <button className="btn" onClick={abrirPagamento} disabled={!nIngressos}>{nIngressos ? 'Comprar ingressos' : 'Escolha os ingressos'}</button>}
           {(tp === 'pacote' || tp === 'diaria') && <button className="btn" onClick={abrirPagamento}>Confirmar e pagar</button>}
           {servico && (jornada(a).disponivel
             ? <button className="btn" onClick={abrirPagamento}>Chamar {a.titulo.split(',')[0]}</button>
@@ -319,5 +363,15 @@ function SemaforoLocal({ a, marcas }: { a: { lat: number; lng: number }; marcas:
       })}</div>
       <p className="hint" style={{ marginTop: 8 }}>Cores marcadas por quem esteve na região nos últimos 30 dias. O horário destacado é o de agora. É percepção, não garantia.</p>
     </>
+  );
+}
+
+function Passo({ n, menos, mais, rotulo }: { n: number; menos: () => void; mais: () => void; rotulo: string }) {
+  return (
+    <span className="passo-qtd" role="group" aria-label={rotulo}>
+      <button type="button" onClick={menos} disabled={!n} aria-label="Menos">−</button>
+      <b className="num">{n}</b>
+      <button type="button" onClick={mais} aria-label="Mais">+</button>
+    </span>
   );
 }

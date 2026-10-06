@@ -6,7 +6,7 @@ import { emDestaque, useAnuncios } from '../data/useAnuncios';
 import { IconeCategoria, Miniatura, toast, useLocalizacao } from '../components/ui';
 import { Mapa, type Celula, type Pino } from '../components/Mapa';
 import { centroPiloto, distanciaKm, formatarDistancia, type Ponto } from '../lib/geo';
-import { brl, nota, precoBase, rotuloPreco, virgula } from '../lib/format';
+import { brl, dataEvento, nota, precoBase, rotuloPreco, virgula } from '../lib/format';
 import { SLOTS, slotDe } from '../lib/regras';
 import { COR_CSS, leitura } from '../lib/semaforo';
 import { marcarSemaforo } from '../store/acoes';
@@ -222,7 +222,7 @@ function Cartao({ a, d }: { a: Anuncio; d: number }) {
       <div className="cartao-txt">
         <span className="t">{a.titulo}</span>
         {emDestaque(a) && <span className="selo">Destaque</span>}
-        <span className="meta">{nomeSub(a)} a {formatarDistancia(d)}{a.metragemM2 ? `, ${a.metragemM2} m²` : ''}</span>
+        <span className="meta">{a.evento ? dataEvento(a.evento.inicio) : nomeSub(a)} a {formatarDistancia(d)}{a.metragemM2 ? `, ${a.metragemM2} m²` : ''}</span>
         <span className="row" style={{ gap: 10 }}>
           <span className="preco">{rotuloPreco(a)}</span>
           <span className="nota"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg>{virgula(nota(a))}</span>

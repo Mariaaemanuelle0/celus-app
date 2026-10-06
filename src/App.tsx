@@ -6,7 +6,7 @@ import { Entrar, Verificar } from './pages/Entrar';
 import { FeedPage, PostarStory } from './pages/FeedPage';
 import { MapPage } from './pages/MapPage';
 import { CelusPage, EditarPerfil, PerfilPage } from './pages/PerfilPage';
-import { Anunciar, AgendaPage, Curadoria, EditarAnuncio, Painel } from './pages/Renda';
+import { Anunciar, AgendaPage, Curadoria, EditarAnuncio, Painel, Portaria } from './pages/Renda';
 import { Notificacoes } from './pages/Notificacoes';
 import { ReservaPage, UsoPage } from './pages/ReservaPage';
 import { useUsuario } from './store/db';
@@ -37,6 +37,7 @@ export default function App() {
           <Route path="renda/anunciar" element={<Anunciar />} />
           <Route path="renda/agenda/:id" element={<AgendaPage />} />
           <Route path="renda/editar/:id" element={<EditarAnuncio />} />
+          <Route path="renda/portaria/:id" element={<Portaria />} />
           <Route path="renda/curadoria" element={<Curadoria />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

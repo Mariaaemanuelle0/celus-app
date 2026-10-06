@@ -10,7 +10,8 @@ export function useAnuncios() {
   const anuncios = useDB((d) => d.anuncios);
   const agora = Date.now();
   const visiveis = anuncios
-    .filter((a) => a.status === 'aprovado' && (a.categoria !== 'servicos' || jornada(a, agora).disponivel));
+    .filter((a) => a.status === 'aprovado' && (a.categoria !== 'servicos' || jornada(a, agora).disponivel))
+    .filter((a) => !a.evento || (!a.evento.cancelado && a.evento.fim > agora));
   return { anuncios: visiveis, todos: anuncios, ficticio: true, carregando: false, erro: null as string | null };
 }
 

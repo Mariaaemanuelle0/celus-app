@@ -4,6 +4,9 @@ import type { Ponto } from './geo';
 
 export const COMISSAO = 0.15;
 export const COMISSAO_REDUZIDA = 0.13;
+/** Ingressos (proposta): quem compra paga 10% de taxa de serviço; o organizador recebe o valor do ingresso inteiro. */
+export const TAXA_INGRESSO = 0.1;
+export const MAX_INGRESSOS_COMPRA = 6;
 export const JORNADA_H = 12;
 export const PAUSA_H = 6;
 export const LIMITE_SEM_SUPERVISAO = 5;
@@ -44,6 +47,12 @@ export function cobranca(r: Reserva, a: Anuncio, agora = Date.now()) {
 
 /** Reembolso ao cancelar (proposta a validar): hora e serviço grátis até o início; diária grátis até 48 h antes, depois 50%. */
 export function reembolso(r: Reserva, agora = Date.now()): { valor: number; regra: string } {
+  if (r.tipo === 'ingresso') {
+    const dentro7 = agora - r.criadoEm <= 7 * DIA, longe = r.inicio - agora >= 48 * 3600_000;
+    if (r.ingressos?.some((i) => i.usadoEm)) return { valor: 0, regra: 'Algum ingresso desta compra já foi usado.' };
+    return dentro7 && longe ? { valor: r.total, regra: 'Até 7 dias depois da compra e com mais de 48 h para o evento, devolvemos tudo.' }
+      : { valor: 0, regra: 'Passou o prazo de cancelamento (7 dias da compra ou 48 h antes do evento). Se o organizador cancelar o evento, você recebe tudo de volta.' };
+  }
   if (r.tipo === 'diaria') {
     const horas = (r.inicio - agora) / 3600_000;
     return horas >= 48 ? { valor: r.total, regra: 'Cancelamento grátis até 48 h antes do check-in.' } : { valor: r.total / 2, regra: 'Menos de 48 h antes do check-in: devolvemos 50%.' };
@@ -63,6 +72,10 @@ export const parteAnfitriao = (r: Reserva) => r.subtotal * (1 - comissaoDe(r));
 /** Quando o dinheiro do anfitrião é liberado: hora e serviço D+1 depois do uso; estadia 24 h após o check-in. */
 export function repasse(r: Reserva, agora = Date.now()): { estado: 'retido' | 'agendado' | 'liberado' | 'nenhum'; quando?: number } {
   if (r.status === 'cancelada' || r.status === 'recusado' || r.status === 'solicitado') return { estado: 'nenhum' };
+  if (r.tipo === 'ingresso') {
+    const quando = (r.fimEvento ?? r.inicio) + DIA;
+    return { estado: agora >= quando ? 'liberado' : agora >= (r.fimEvento ?? r.inicio) ? 'agendado' : 'retido', quando };
+  }
   if (r.tipo === 'diaria') {
     const quando = r.inicio + DIA;
     if (r.status !== 'concluida' && agora < r.inicio) return { estado: 'retido' };

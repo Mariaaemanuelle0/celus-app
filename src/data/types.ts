@@ -3,6 +3,9 @@ export type Categoria =
   | 'eventos' | 'imoveis' | 'estacionamento' | 'servicos';
 
 export type Pacote = { horas: number; preco: number };
+/** Lote de ingressos de um evento. Meia-entrada sai pela metade do preço. */
+export type Lote = { id: string; nome: string; preco: number; qtd: number; vendidos: number; meia: boolean };
+export type Ingresso = { codigo: string; loteId: string; loteNome: string; meia: boolean; valor: number; usadoEm?: number };
 export type Extra = { nome: string; preco: number };
 
 /** Horário de funcionamento por dia da semana (0 = domingo): [abre, fecha] em minutos do dia, ou null = fechado. */
@@ -25,7 +28,7 @@ export type Anuncio = {
   bairro: string;
   lat: number;
   lng: number;
-  tipoPreco: 'pacote' | 'diaria' | 'valor' | 'servico';
+  tipoPreco: 'pacote' | 'diaria' | 'valor' | 'servico' | 'ingresso';
   pacotes?: Pacote[];
   preco?: number;
   unidadePreco?: string;
@@ -56,6 +59,9 @@ export type Anuncio = {
   /** Mudança de título, foto ou descrição esperando a curadoria conferir (o anúncio segue no ar). */
   revisar?: boolean;
   convite?: Convite;
+  /** Evento com ingresso: data, hora e lotes. */
+  evento?: { inicio: number; fim: number; cancelado?: boolean };
+  lotes?: Lote[];
 };
 
 export type Verificacao = 'nao_enviado' | 'em_analise' | 'verificado';
@@ -84,7 +90,7 @@ export type Reserva = {
   id: string;
   anuncioId: string;
   userId: string;
-  tipo: 'hora' | 'diaria' | 'servico';
+  tipo: 'hora' | 'diaria' | 'servico' | 'ingresso';
   status: StatusReserva;
   inicio: number;          // timestamp do início previsto
   pacote?: Pacote;         // hora
@@ -117,6 +123,8 @@ export type Reserva = {
   pagamentoPorFora?: number;
   /** Chamado de serviço: onde o cliente está (o profissional vai até lá). */
   destino?: { lat: number; lng: number };
+  ingressos?: Ingresso[];
+  fimEvento?: number;
 };
 
 export type Notificacao = { id: string; userId: string; t: number; txt: string; link?: string; lida: boolean };

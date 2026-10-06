@@ -1,18 +1,18 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ACESSO, CATEGORIAS, COMODIDADES, ORDEM_CATEGORIAS, PROFISSOES } from '../data/catalogo';
-import type { Agenda, Anuncio, Categoria, Extra, Pacote } from '../data/types';
+import type { Agenda, Anuncio, Categoria, Extra, Lote, Pacote } from '../data/types';
 import { agendaPadrao } from '../data/seed';
 import { Estrelas, IconeCategoria, Miniatura, Voltar, lerImagem, toast, useAgora, useLocalizacao } from '../components/ui';
 import { emDestaque } from '../data/useAnuncios';
 import { ComoChegar } from '../components/Rota';
-import { brl, rotuloPreco, virgula } from '../lib/format';
+import { brl, dataEvento, rotuloPreco, virgula } from '../lib/format';
 import { centroPiloto } from '../lib/geo';
 import {
-  COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
+  COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, TAXA_INGRESSO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
 } from '../lib/regras';
 import {
-  alternarDisponivel, arquivarPorFora, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
+  alternarDisponivel, arquivarPorFora, cancelarEvento, validarIngresso, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
   denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
 } from '../store/acoes';
 import { useDB, useUsuario } from '../store/db';
@@ -140,9 +140,18 @@ export function Painel() {
           ) : precisaSupervisao(a) && (a.semSupervisao ?? 0) > 0 ? (
             <p className="hint" style={{ margin: '8px 0 0' }}>{a.semSupervisao} de {LIMITE_SEM_SUPERVISAO} locações sem conferência.</p>
           ) : null}
+          {a.tipoPreco === 'ingresso' && a.lotes && a.evento && (
+            <div className="vendas">
+              <div className="hint">{a.evento.cancelado ? 'Evento cancelado' : `${dataEvento(a.evento.inicio)}`}</div>
+              {a.lotes.map((l) => (
+                <div key={l.id} className="vendas-linha"><span className="sp">{l.nome}</span><span className="num">{l.vendidos}/{l.qtd}</span><i style={{ width: `${Math.min(100, (l.vendidos / l.qtd) * 100)}%` }} /></div>
+              ))}
+            </div>
+          )}
           <div className="row" style={{ marginTop: 10 }}>
+            {a.tipoPreco === 'ingresso' && a.status === 'aprovado' && !a.evento?.cancelado && <Link className="btn sm" to={`/renda/portaria/${a.id}`}>Portaria</Link>}
             <Link className="btn sm ghost" to={`/renda/editar/${a.id}`}>Editar</Link>
-            {a.tipoPreco !== 'valor' && a.categoria !== 'servicos' && <Link className="btn sm ghost" to={`/renda/agenda/${a.id}`}>Agenda</Link>}
+            {a.tipoPreco !== 'valor' && a.tipoPreco !== 'ingresso' && a.categoria !== 'servicos' && <Link className="btn sm ghost" to={`/renda/agenda/${a.id}`}>Agenda</Link>}
             {(a.status === 'aprovado' || a.status === 'pausado') && <button className="btn sm ghost" onClick={() => pausarAnuncio(a.id)}>{a.status === 'pausado' ? 'Reativar' : 'Pausar'}</button>}
           </div>
         </div>
@@ -158,12 +167,12 @@ export function Painel() {
         return (
           <div key={r.id} className="box" style={{ padding: 14 }}>
             <div className="row" style={{ flexWrap: 'nowrap', gap: 10 }}><span className="avatar mini">{usuarios[r.userId]?.foto ? <img src={usuarios[r.userId].foto} alt={`Foto de ${usuarios[r.userId].nome}`} /> : (usuarios[r.userId]?.nome ?? 'H').slice(0, 1)}</span><b className="sp">{usuarios[r.userId]?.nome ?? 'Hóspede'}</b><span className="preco">{r.status === 'cancelada' || r.status === 'recusado' ? '–' : brl(parteAnfitriao(r))}</span></div>
-            <div className="meta">{a.titulo}, {dataHoraCurta(r.inicio)}</div>
+            <div className="meta">{a.titulo}, {dataHoraCurta(r.inicio)}{r.tipo === 'ingresso' ? `, ${r.ingressos?.length} ingresso${(r.ingressos?.length ?? 0) > 1 ? 's' : ''}` : ''}</div>
             <div className="hint" style={{ marginTop: 2 }}>
               {r.status === 'cancelada' ? 'Cancelada pelo cliente' : r.status === 'recusado' ? 'Chamado recusado' : `${ESTADO_REPASSE[rep.estado]}${rep.estado === 'agendado' && rep.quando ? ` ${dataCurta(rep.quando)}` : ''}`}
               {r.comissao && r.comissao < COMISSAO ? `. Comissão de ${Math.round(r.comissao * 100)}%` : ''}
             </div>
-            {r.status === 'confirmada' && a.tipoAcesso !== 'fechadura' && !r.chegadaConfirmada && <ConferirCodigo reservaId={r.id} rotulo="Quando a pessoa chegar, confira se é o rosto da foto e peça o código" />}
+            {r.tipo !== 'ingresso' && r.status === 'confirmada' && a.tipoAcesso !== 'fechadura' && !r.chegadaConfirmada && <ConferirCodigo reservaId={r.id} rotulo="Quando a pessoa chegar, confira se é o rosto da foto e peça o código" />}
             {r.status === 'confirmada' && r.chegadaConfirmada && <div className="hint" style={{ color: 'var(--ok)' }}>Chegada confirmada pelo código.</div>}
             {r.status === 'concluida' && !r.avaliadaPeloAnfitriao && (
               <div style={{ marginTop: 8 }}><div className="hint">Avalie {a.categoria === 'servicos' ? 'o cliente' : 'o hóspede'} (só estrelas):</div><Estrelas valor={0} onChange={(n) => { avaliarHospede(r.id, n); toast('Avaliação enviada'); }} rotulo="Nota do cliente" /></div>
@@ -288,14 +297,16 @@ type Rascunho = {
   cat: Categoria; sub: string; prof: string; titulo: string; bairro: string; descricao: string;
   pacotes: Pacote[]; horasFicar: boolean; preco: number; unidade: string; porPessoa: boolean; metragem: number; capacidade: number;
   comodidades: string[]; extras: Extra[]; acesso: NonNullable<Anuncio['tipoAcesso']>; responsavel: string; manual: string; limpeza: boolean; fotos: string[];
+  inicioEvento: string; duracaoH: number; lotes: Lote[];
 };
 const RASCUNHO: Rascunho = {
   cat: 'descanso', sub: 'rede', prof: '', titulo: '', bairro: '', descricao: '',
   pacotes: [{ horas: 1, preco: 10 }, { horas: 3, preco: 25 }, { horas: 6, preco: 45 }], horasFicar: true, preco: 100, unidade: '/h', porPessoa: false, metragem: 10, capacidade: 1,
   comodidades: [], extras: [], acesso: 'responsavel', responsavel: '', manual: '', limpeza: false, fotos: [],
+  inicioEvento: '', duracaoH: 5, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 100, vendidos: 0, meia: true }],
 };
 const PACOTES_FICAR: Pacote[] = [{ horas: 3, preco: 40 }, { horas: 6, preco: 65 }, { horas: 12, preco: 90 }];
-const tipoPrecoDe = (c: Categoria): Anuncio['tipoPreco'] => (c === 'ficar' ? 'diaria' : c === 'imoveis' ? 'valor' : c === 'servicos' ? 'servico' : 'pacote');
+const tipoPrecoDe = (c: Categoria, sub?: string): Anuncio['tipoPreco'] => (c === 'eventos' && sub === 'ingressos' ? 'ingresso' : c === 'ficar' ? 'diaria' : c === 'imoveis' ? 'valor' : c === 'servicos' ? 'servico' : 'pacote');
 
 function deAnuncio(a: Anuncio): Rascunho {
   return {
@@ -303,11 +314,22 @@ function deAnuncio(a: Anuncio): Rascunho {
     pacotes: a.pacotes?.length ? a.pacotes : a.categoria === 'ficar' ? PACOTES_FICAR : RASCUNHO.pacotes, horasFicar: !!a.pacotes?.length,
     preco: a.preco ?? 0, unidade: a.unidadePreco ?? '', porPessoa: !!a.porPessoa, metragem: a.metragemM2 ?? 0, capacidade: a.capacidade,
     comodidades: a.comodidades, extras: a.extras, acesso: a.tipoAcesso ?? 'responsavel', responsavel: a.responsavelLocal ?? '', manual: a.manualBonsModos, limpeza: a.limpezaInclusa, fotos: a.fotos,
+    inicioEvento: a.evento ? new Date(a.evento.inicio - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '',
+    duracaoH: a.evento ? Math.round((a.evento.fim - a.evento.inicio) / 3600_000) : 5, lotes: a.lotes ?? RASCUNHO.lotes,
   };
 }
 
 function paraDados(f: Rascunho) {
-  const tipo = tipoPrecoDe(f.cat);
+  const tipo = tipoPrecoDe(f.cat, f.sub);
+  if (tipo === 'ingresso') {
+    const inicio = Date.parse(f.inicioEvento);
+    const lotes = f.lotes.filter((l) => l.nome.trim() && l.qtd > 0).map((l, i) => ({ ...l, id: l.id || `l${i + 1}`, nome: l.nome.trim() }));
+    return {
+      categoria: f.cat, subcategoria: f.sub, titulo: f.titulo.trim(), descricao: f.descricao.trim(), bairro: f.bairro.trim(), tipoPreco: tipo,
+      capacidade: lotes.reduce((s, l) => s + l.qtd, 0), comodidades: [], extras: [], manualBonsModos: f.manual.trim(), limpezaInclusa: false, fotos: f.fotos,
+      evento: { inicio, fim: inicio + f.duracaoH * 3600_000 }, lotes,
+    };
+  }
   const servico = f.cat === 'servicos';
   const usaPacotes = tipo === 'pacote' || (f.cat === 'ficar' && f.horasFicar);
   return {
@@ -348,7 +370,7 @@ export function Anunciar() {
           : `O anúncio fica na posição onde você está agora${onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. A equipe Celus revisa antes de publicar.`}
         onEnviar={(f) => {
           const p = onde ?? centroPiloto();
-          const dados = { ...paraDados(f), lat: p.lat, lng: p.lng, agenda: agendaPadrao(tipoPrecoDe(f.cat)) };
+          const dados = { ...paraDados(f), lat: p.lat, lng: p.lng, agenda: agendaPadrao(tipoPrecoDe(f.cat, f.sub)) };
           if (assistido) {
             const r = criarAnuncioAssistido(dados, anf);
             if (!r.ok) { setErroAnf(r.erro); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
@@ -381,7 +403,7 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
   const [f, setF] = useState<Rascunho>(inicial);
   const [erro, setErro] = useState('');
   const set = <K extends keyof Rascunho>(k: K, v: Rascunho[K]) => setF((x) => ({ ...x, [k]: v }));
-  const tipo = tipoPrecoDe(f.cat);
+  const tipo = tipoPrecoDe(f.cat, f.sub);
   const servico = f.cat === 'servicos';
   const mostraPacotes = tipo === 'pacote' || (f.cat === 'ficar' && f.horasFicar);
 
@@ -394,8 +416,14 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
     e.preventDefault(); setErro('');
     if (f.titulo.trim().length < 4) return setErro('Dê um título ao anúncio.');
     if (!f.fotos.length) return setErro('Adicione pelo menos uma foto.');
-    if (mostraPacotes && !f.pacotes.some((p) => p.preco > 0)) return setErro('Defina o preço de pelo menos um pacote.');
-    if (tipo !== 'pacote' && !(f.preco > 0)) return setErro('Defina o preço.');
+    if (tipo === 'ingresso') {
+      const ini = Date.parse(f.inicioEvento);
+      if (!ini || ini < Date.now()) return setErro('Escolha a data e a hora do evento, a partir de agora.');
+      if (!f.lotes.some((l) => l.nome.trim() && l.qtd > 0 && l.preco >= 0)) return setErro('Crie pelo menos um lote com quantidade.');
+    } else {
+      if (mostraPacotes && !f.pacotes.some((p) => p.preco > 0)) return setErro('Defina o preço de pelo menos um pacote.');
+      if (tipo !== 'pacote' && !(f.preco > 0)) return setErro('Defina o preço.');
+    }
     if (!f.manual.trim()) return setErro(servico ? 'Conte como você trabalha.' : 'Escreva o manual de bons modos.');
     if ([f.titulo, f.descricao, f.manual, ...f.extras.map((x) => x.nome)].some(pedePagamentoPorFora)) return setErro('Na Celus, todo pagamento é feito antes, pelo app. Tire do texto qualquer pedido de dinheiro, maquininha ou Pix direto.');
     onEnviar(f);
@@ -415,6 +443,31 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
         <div><div className="flabel">Fotos <span className="hint">mínimo 1, ideal 3 ou mais</span></div>
           <div className="uploads">{f.fotos.map((src, i) => <button type="button" key={i} className="fotoedit" onClick={() => set('fotos', f.fotos.filter((_, j) => j !== i))} aria-label="Remover foto"><img src={src} alt="" /><span>×</span></button>)}<label className="addfoto">+<input id="a-fotos" type="file" accept="image/*" multiple onChange={async (e) => { const fs = [...(e.target.files ?? [])].slice(0, 6); const lidas = await Promise.all(fs.map((x) => lerImagem(x))); set('fotos', [...f.fotos, ...lidas].slice(0, 8)); }} /></label></div></div>
 
+        {tipo === 'ingresso' && (
+          <>
+            <div className="grid2">
+              <label className="campo">Começa<input id="a-inicio" type="datetime-local" value={f.inicioEvento} onChange={(e) => set('inicioEvento', e.target.value)} /></label>
+              <label className="campo">Duração (horas)<input id="a-duracao" type="number" min={1} max={48} value={f.duracaoH} onChange={(e) => set('duracaoH', Number(e.target.value))} /></label>
+            </div>
+            <div><div className="flabel">Lotes de ingresso <span className="hint">o próximo lote abre quando o anterior esgota, ou venda os dois juntos</span></div>
+              <div className="stack" style={{ gap: 10 }}>{f.lotes.map((l, i) => (
+                <div key={i} className="box" style={{ padding: 12 }}>
+                  <div className="exrow" style={{ gridTemplateColumns: '1fr 90px 40px' }}>
+                    <input value={l.nome} aria-label="Nome do lote" onChange={(e) => set('lotes', f.lotes.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} />
+                    <input type="number" min={0} value={l.preco} aria-label="Preço do lote" onChange={(e) => set('lotes', f.lotes.map((x, j) => j === i ? { ...x, preco: Number(e.target.value) } : x))} />
+                    <button type="button" aria-label="Remover lote" disabled={l.vendidos > 0} onClick={() => set('lotes', f.lotes.filter((_, j) => j !== i))}>×</button>
+                  </div>
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <label className="campo" style={{ flex: 1 }}>Quantidade<input type="number" min={Math.max(1, l.vendidos)} value={l.qtd} aria-label="Quantidade do lote" onChange={(e) => set('lotes', f.lotes.map((x, j) => j === i ? { ...x, qtd: Number(e.target.value) } : x))} /></label>
+                    <label className="check" style={{ flex: 1, alignSelf: 'flex-end', paddingBottom: 12 }}><input type="checkbox" checked={l.meia} onChange={(e) => set('lotes', f.lotes.map((x, j) => j === i ? { ...x, meia: e.target.checked } : x))} /><span>Tem meia-entrada</span></label>
+                  </div>
+                  {l.vendidos > 0 && <p className="hint" style={{ margin: 0 }}>{l.vendidos} já vendidos.</p>}
+                </div>
+              ))}<button type="button" className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => set('lotes', [...f.lotes, { id: `l${Date.now()}`, nome: `${f.lotes.length + 1}º lote`, preco: (f.lotes.at(-1)?.preco ?? 30) + 15, qtd: 100, vendidos: 0, meia: true }])}>+ Adicionar lote</button></div>
+              <p className="hint">Quem compra paga uma taxa de serviço de {Math.round(TAXA_INGRESSO * 100)}%. Você recebe o valor inteiro dos ingressos, um dia depois do evento. A lei garante meia-entrada a estudantes e outros públicos: confira as regras de cota com o advogado.</p>
+            </div>
+          </>
+        )}
         {f.cat === 'ficar' && (
           <div className="box" style={{ padding: 14 }}>
             <label className="check"><input type="checkbox" checked={f.horasFicar} onChange={(e) => set('horasFicar', e.target.checked)} /><span><b>Também alugar por algumas horas</b><br /><span className="hint">{f.sub === 'camping' ? 'Day use: para quem quer passar o dia, usar a sombra, o chuveiro e a churrasqueira sem dormir.' : 'Para quem quer descansar entre compromissos, esperar um voo ou passar a noite. Só para espaço com entrada independente.'}</span></span></label>
@@ -432,14 +485,14 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
           </div>
         )}
         {tipo === 'diaria' && <label className="check"><input type="checkbox" checked={f.porPessoa} onChange={(e) => set('porPessoa', e.target.checked)} /><span>Cobrar por pessoa{f.sub === 'camping' ? ' (o comum em camping)' : ''}</span></label>}
-        {tipo !== 'pacote' && (
+        {tipo !== 'pacote' && tipo !== 'ingresso' && (
           <div className="grid2">
             <label className="campo">{tipo === 'diaria' ? (f.porPessoa ? 'Diária por pessoa (R$)' : 'Diária (R$)') : 'Preço (R$)'}<input id="a-preco" type="number" min={1} value={f.preco} onChange={(e) => set('preco', Number(e.target.value))} /></label>
             {tipo !== 'diaria' && <label className="campo">Cobrado por<select value={f.unidade} onChange={(e) => set('unidade', e.target.value)}>{(servico ? ['/h', '/visita', '/dia', '/atendimento', '/passeio'] : ['/mês', '']).map((un) => <option key={un} value={un}>{un ? un.slice(1) : 'venda'}</option>)}</select></label>}
           </div>
         )}
 
-        {!servico && (
+        {!servico && tipo !== 'ingresso' && (
           <>
             <div className="grid2">
               <label className="campo">Metragem (m²)<input type="number" min={1} value={f.metragem} onChange={(e) => set('metragem', Number(e.target.value))} /></label>
@@ -459,13 +512,50 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
             <label className="check"><input type="checkbox" checked={f.limpeza} onChange={(e) => set('limpeza', e.target.checked)} /><span>Tenho limpeza depois de cada uso</span></label>
           </>
         )}
-        <label className="campo">{servico ? 'Como você trabalha' : 'Manual de bons modos'}<textarea rows={3} value={f.manual} onChange={(e) => set('manual', e.target.value)} /></label>
+        <label className="campo">{servico ? 'Como você trabalha' : tipo === 'ingresso' ? 'Regras do evento (entrada, documentos, o que não pode)' : 'Manual de bons modos'}<textarea rows={3} value={f.manual} onChange={(e) => set('manual', e.target.value)} /></label>
         {servico ? <div className="dica"><p style={{ margin: 0 }}>Você trabalha como freelancer. Depois de 12 h seguidas disponível, seu perfil pausa por 6 h. O cliente paga antes, pelo app; cobrar por fora, em dinheiro ou maquininha, leva à suspensão. A comissão da Celus é de 15% por chamado e você emite nota sobre o que ganhar.</p></div>
           : <div className="dica"><p style={{ margin: 0 }}>Regras da casa: nenhum espaço pode deixar duas pessoas desconhecidas sozinhas num ambiente íntimo fechado; prefira acesso independente. Todo pagamento é feito antes, pelo app, incluindo extras e tempo a mais. Cobrar por fora, em dinheiro ou maquininha, leva à suspensão. Comissão Celus: 15% por reserva.</p></div>}
         {erro && <p className="erro" role="alert">{erro}</p>}
         <button className="btn">{botao}</button>
       </div>
     </form>
+  );
+}
+
+/* ---------------- Portaria do evento ---------------- */
+export function Portaria() {
+  const { id } = useParams();
+  const a = useDB((d) => d.anuncios.find((x) => x.id === id));
+  const reservas = useDB((d) => d.reservas);
+  const [cod, setCod] = useState('');
+  const [res, setRes] = useState<ReturnType<typeof validarIngresso> | null>(null);
+  const [confirmaCancel, setConfirmaCancel] = useState(false);
+  if (!a || !a.evento) return <div className="empty">Evento não encontrado.</div>;
+  const todos = reservas.filter((r) => r.anuncioId === a.id && r.status !== 'cancelada').flatMap((r) => r.ingressos ?? []);
+  const usados = todos.filter((i) => i.usadoEm).length;
+  return (
+    <>
+      <Voltar para="/renda" />
+      <h1>Portaria</h1>
+      <p className="lead">{a.titulo}, {dataEvento(a.evento.inicio)}. Digite o código do ingresso de cada pessoa. Cada código entra uma vez.</p>
+      <div className="kpis" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div className="box kpi"><b className="num">{usados}</b><span>entraram</span></div>
+        <div className="box kpi"><b className="num">{todos.length}</b><span>ingressos vendidos</span></div>
+      </div>
+      <form className="portaria" onSubmit={(e) => { e.preventDefault(); setRes(validarIngresso(a.id, cod)); setCod(''); }}>
+        <input id="pt-cod" className="num" autoCapitalize="characters" autoComplete="off" placeholder="CÓDIGO" maxLength={6} value={cod} onChange={(e) => setCod(e.target.value.toUpperCase())} aria-label="Código do ingresso" />
+        <button className="btn" disabled={cod.length !== 6}>Validar</button>
+      </form>
+      {res && (res.ok
+        ? <div className="alerta ok portaria-res"><b>Pode entrar.</b> {res.nome}, {res.lote}.{res.meia ? ' Meia-entrada: confira o documento.' : ''}</div>
+        : <div className="alerta bad portaria-res"><b>Não liberar.</b> {res.erro}</div>)}
+      <p className="hint" style={{ marginTop: 14 }}>Confira também o rosto: quem comprou aparece com foto no app.</p>
+
+      <h2>Cancelar o evento</h2>
+      {!confirmaCancel ? <button className="btn ghost" onClick={() => setConfirmaCancel(true)}>Cancelar evento e devolver tudo</button>
+        : <div className="alerta warn">Todas as pessoas recebem o valor inteiro de volta, incluindo a taxa. Isso não pode ser desfeito.
+            <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => { cancelarEvento(a.id); toast('Evento cancelado. Reembolsos enviados'); }}>Cancelar evento</button><button className="btn sm ghost" onClick={() => setConfirmaCancel(false)}>Voltar</button></div></div>}
+    </>
   );
 }
 

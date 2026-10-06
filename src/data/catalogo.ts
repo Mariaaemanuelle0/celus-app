@@ -5,7 +5,7 @@ export const CATEGORIAS: Record<Categoria, { nome: string; curto?: string; cor: 
   descanso: { nome: 'Descanso', cor: '#A08CFF', subs: { rede: 'Rede', cabine: 'Cabine' } },
   trabalho: { nome: 'Trabalho', cor: '#49C7A5', subs: { sala: 'Sala de trabalho', wifi: 'Só Wi-Fi', computador: 'Computador com internet', reuniao: 'Sala de reunião' } },
   ficar: { nome: 'Ficar', cor: '#F2A65A', subs: { suite: 'Suíte independente', casa: 'Casa inteira', camping: 'Camping', motorhome: 'Motorhome' } },
-  eventos: { nome: 'Eventos', cor: '#F07AA8', subs: { festa: 'Festa', inauguracao: 'Inauguração', show: 'Show' } },
+  eventos: { nome: 'Eventos', cor: '#F07AA8', subs: { ingressos: 'Ingressos à venda', festa: 'Espaço para festa', inauguracao: 'Espaço para inauguração', show: 'Espaço para show' } },
   imoveis: { nome: 'Imóveis', cor: '#D4B26A', subs: { venda: 'Venda', aluguel: 'Aluguel' } },
   estacionamento: { nome: 'Estacionamento', curto: 'Estacionar', cor: '#B9C6E0', subs: { carro: 'Carro', moto: 'Moto', bike: 'Bicicleta' } },
   servicos: { nome: 'Serviços', cor: '#5CD6D6', subs: { restaurante: 'Restaurante', evento: 'Eventos', pet: 'Pet', reforma: 'Reforma', limpeza: 'Limpeza', beleza: 'Beleza' } },

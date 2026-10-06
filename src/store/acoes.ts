@@ -1,7 +1,7 @@
-import type { Anuncio, Extra, Pacote, Reserva } from '../data/types';
+import type { Anuncio, Extra, Ingresso, Pacote, Reserva } from '../data/types';
 import { distanciaKm, type Ponto } from '../lib/geo';
 import {
-  CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
+  CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, MAX_INGRESSOS_COMPRA, TAXA_INGRESSO, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
   bloqueadoPorConferencia, celulaSemaforo, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
 import { carteiraDe, ganhar, ler, mudar, notificar, novoId, type DB } from './db';
@@ -530,4 +530,78 @@ export function assumirAnuncio(codigoOuId: string): Resultado {
     notificar(d, por, `${d.usuarios[uid]?.nome.split(' ')[0] ?? 'O anfitrião'} assumiu ${x.titulo}. Já está no mapa.`, '/renda');
   });
   return { ok: true };
+}
+
+/* ---------- Ingressos de eventos ---------- */
+const codIngresso = () => Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+const centavos = (v: number) => Math.round(v * 100) / 100;
+
+export type ItemCompra = { loteId: string; inteira: number; meia: number };
+
+export function comprarIngressos(a: Anuncio, itens: ItemCompra[], pagamento: Pagamento = 'pix', declaraMeia = false): { ok: true; id: string } | { ok: false; erro: string } {
+  const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (semFoto()) return { ok: false, erro: SEM_FOTO };
+  if (!a.evento || a.evento.cancelado) return { ok: false, erro: 'Este evento não está vendendo ingressos.' };
+  if (Date.now() > a.evento.fim) return { ok: false, erro: 'Este evento já aconteceu.' };
+  const total = itens.reduce((s, i) => s + i.inteira + i.meia, 0);
+  if (!total) return { ok: false, erro: 'Escolha pelo menos um ingresso.' };
+  if (total > MAX_INGRESSOS_COMPRA) return { ok: false, erro: `No máximo ${MAX_INGRESSOS_COMPRA} ingressos por compra.` };
+  if (itens.some((i) => i.meia > 0) && !declaraMeia) return { ok: false, erro: 'Para meia-entrada, confirme que vai apresentar o documento na entrada.' };
+  for (const i of itens) {
+    const l = a.lotes?.find((x) => x.id === i.loteId);
+    if (!l) return { ok: false, erro: 'Lote não encontrado.' };
+    if (i.meia && !l.meia) return { ok: false, erro: `${l.nome} não tem meia-entrada.` };
+    if (l.vendidos + i.inteira + i.meia > l.qtd) return { ok: false, erro: `${l.nome}: só restam ${l.qtd - l.vendidos}.` };
+  }
+  const ingressos: Ingresso[] = [];
+  for (const i of itens) {
+    const l = a.lotes!.find((x) => x.id === i.loteId)!;
+    for (let k = 0; k < i.inteira; k++) ingressos.push({ codigo: codIngresso(), loteId: l.id, loteNome: l.nome, meia: false, valor: l.preco });
+    for (let k = 0; k < i.meia; k++) ingressos.push({ codigo: codIngresso(), loteId: l.id, loteNome: l.nome, meia: true, valor: centavos(l.preco / 2) });
+  }
+  const subtotal = centavos(ingressos.reduce((s, i) => s + i.valor, 0));
+  const taxa = centavos(subtotal * TAXA_INGRESSO);
+  const id = novoId();
+  mudar((d) => {
+    const x = d.anuncios.find((y) => y.id === a.id)!;
+    for (const i of itens) { const l = x.lotes!.find((y) => y.id === i.loteId)!; l.vendidos += i.inteira + i.meia; }
+    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'ingresso', status: 'confirmada', inicio: a.evento!.inicio, fimEvento: a.evento!.fim, pessoas: ingressos.length, extras: [], extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: taxa, multa: 0, total: centavos(subtotal + taxa), codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: true, criadoEm: Date.now(), comissao: 0, pagamento, ingressos });
+    d.usuarios[uid].ultimoPagamento = pagamento;
+    notificar(d, uid, `${ingressos.length} ingresso${ingressos.length > 1 ? 's' : ''} para ${a.titulo}. Estão no seu perfil.`, `/reserva/${id}`);
+    notificar(d, a.donoId, `Venda: ${ingressos.length} ingresso${ingressos.length > 1 ? 's' : ''} de ${a.titulo}.`, '/renda');
+  });
+  return { ok: true, id };
+}
+
+/** Portaria do evento: o organizador digita o código do ingresso. Cada código vale uma vez. */
+export function validarIngresso(anuncioId: string, digitado: string): { ok: true; nome: string; meia: boolean; lote: string } | { ok: false; erro: string } {
+  const d0 = ler(); const uid = d0.sessao;
+  const a = d0.anuncios.find((x) => x.id === anuncioId); if (!a) return { ok: false, erro: 'Evento não encontrado.' };
+  if (a.donoId !== uid) return { ok: false, erro: 'Só o organizador valida ingressos.' };
+  const cod = digitado.trim().toUpperCase();
+  const r = d0.reservas.find((x) => x.anuncioId === anuncioId && x.status !== 'cancelada' && x.ingressos?.some((i) => i.codigo === cod));
+  if (!r) return { ok: false, erro: 'Ingresso não encontrado para este evento.' };
+  const ing = r.ingressos!.find((i) => i.codigo === cod)!;
+  if (ing.usadoEm) return { ok: false, erro: `Ingresso já usado às ${new Date(ing.usadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.` };
+  mudar((d) => { const x = d.reservas.find((y) => y.id === r.id)!; x.ingressos!.find((i) => i.codigo === cod)!.usadoEm = Date.now(); });
+  return { ok: true, nome: d0.usuarios[r.userId]?.nome ?? 'Cliente', meia: ing.meia, lote: ing.loteNome };
+}
+
+/** Organizador cancela o evento: todo mundo recebe o valor inteiro de volta. */
+export function cancelarEvento(anuncioId: string) {
+  mudar((d) => {
+    const a = d.anuncios.find((x) => x.id === anuncioId); if (!a || a.donoId !== d.sessao || !a.evento) return;
+    a.evento.cancelado = true; a.status = 'pausado';
+    for (const r of d.reservas) if (r.anuncioId === anuncioId && r.status === 'confirmada') {
+      r.status = 'cancelada'; r.reembolso = r.total;
+      notificar(d, r.userId, `${a.titulo} foi cancelado pelo organizador. Você recebe ${brlTxt(r.total)} de volta.`, `/reserva/${r.id}`);
+    }
+  });
+}
+
+/** Eventos que já terminaram: as compras viram concluídas e liberam a avaliação. */
+export function concluirEventosPassados() {
+  const agora = Date.now();
+  if (!ler().reservas.some((r) => r.tipo === 'ingresso' && r.status === 'confirmada' && (r.fimEvento ?? 0) < agora)) return;
+  mudar((d) => { for (const r of d.reservas) if (r.tipo === 'ingresso' && r.status === 'confirmada' && (r.fimEvento ?? 0) < agora) { r.status = 'concluida'; r.fim = r.fimEvento; } });
 }

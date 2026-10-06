@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { CATEGORIAS } from '../data/catalogo';
 import { ComoChegar } from '../components/Rota';
 import { Estrelas, Voltar, toast, useAgora } from '../components/ui';
-import { brl, rotuloHoras } from '../lib/format';
+import { brl, dataEvento, rotuloHoras } from '../lib/format';
 import { AVISO_MIN, CARENCIA_MIN, cobranca, reembolso } from '../lib/regras';
 import { avaliarAnuncio, avancarChamado, avancarTeste, avisarFim, cancelar, confirmarChegada, encerrar, estender, iniciarUso, relatarPorFora } from '../store/acoes';
 import { useDB } from '../store/db';
@@ -42,6 +42,7 @@ export function ReservaPage() {
       <p className="meta">
         {r.tipo === 'hora' && `${dataHora(r.inicio)} · pacote ${rotuloHoras(r.pacote?.horas ?? 0)}${r.pessoas > 1 ? ` · ${r.pessoas} pessoas` : ''}`}
         {r.tipo === 'diaria' && `Check-in ${dataHora(r.inicio)} · ${r.noites} diária${(r.noites ?? 1) > 1 ? 's' : ''}`}
+        {r.tipo === 'ingresso' && `${dataEvento(r.inicio)}, ${r.ingressos?.length ?? 0} ingresso${(r.ingressos?.length ?? 0) > 1 ? 's' : ''}`}
         {r.tipo === 'servico' && `Chamado às ${new Date(r.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
       </p>
 
@@ -54,7 +55,22 @@ export function ReservaPage() {
       )}
       {r.status === 'recusado' && <div className="alerta warn" style={{ marginTop: 14 }}>O profissional não pode atender agora. Você não paga nada. Procure outro no mapa.</div>}
 
-      {(r.status === 'confirmada' || (r.tipo === 'servico' && ['aceito', 'a_caminho'].includes(r.status))) && (
+      {r.tipo === 'ingresso' && r.ingressos && r.status !== 'cancelada' && (
+        <div className="stack" style={{ marginTop: 14 }}>
+          {r.ingressos.map((i, k) => (
+            <div key={i.codigo} className={`ingresso ${i.usadoEm ? 'usado' : ''}`}>
+              <div className="sp" style={{ minWidth: 0 }}>
+                <div className="hint">Ingresso {k + 1} de {r.ingressos!.length}, {i.loteNome}{i.meia ? ', meia-entrada' : ''}</div>
+                <div className="code num">{i.codigo}</div>
+                <div className="hint">{i.usadoEm ? `Usado às ${new Date(i.usadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : i.meia ? 'Mostre na entrada com o documento da meia.' : 'Mostre na entrada. Vale uma vez.'}</div>
+              </div>
+            </div>
+          ))}
+          <p className="hint">Cada código vale uma pessoa e uma entrada. Não poste foto dos ingressos.</p>
+        </div>
+      )}
+
+      {r.tipo !== 'ingresso' && (r.status === 'confirmada' || (r.tipo === 'servico' && ['aceito', 'a_caminho'].includes(r.status))) && (
         <div className="codigo-chegada">
           <div className="eyebrow">{a.tipoAcesso === 'fechadura' && r.tipo !== 'servico' ? 'Senha da porta' : 'Seu código de chegada'}</div>
           <div className="code num">{r.codigo}</div>
@@ -74,7 +90,7 @@ export function ReservaPage() {
       )}
 
       {r.tipo !== 'servico' && ['confirmada', 'em_uso'].includes(r.status) && <ComoChegar lat={a.lat} lng={a.lng} />}
-      <div className="box resumo">
+            <div className="box resumo">
         <div className="sumline"><span>Valor</span><span>{brl(r.subtotal)}</span></div>
         {r.taxaUsuario > 0 && <div className="sumline"><span>Taxa de serviço</span><span>{brl(r.taxaUsuario)}</span></div>}
         {r.multa > 0 && <div className="sumline"><span>Excedente</span><span>{brl(r.multa)}</span></div>}
@@ -106,7 +122,7 @@ export function ReservaPage() {
             : <button className="mden" style={{ display: 'block', marginTop: 8, fontSize: 13 }} onClick={() => { relatarPorFora(r.id); toast('Aviso enviado à equipe Celus'); }}>Pediram pagamento por fora? Avise a Celus</button>}
         </div>
       )}
-      {(r.status === 'confirmada') && <><h2>Manual de bons modos</h2><div className="manual">{a.manualBonsModos}</div></>}
+      {(r.status === 'confirmada') && <><h2>{a.tipoPreco === 'ingresso' ? 'Regras do evento' : 'Manual de bons modos'}</h2><div className="manual">{a.manualBonsModos}</div></>}
       {r.tipo === 'servico' && demo && PASSOS.includes(r.status) && <p className="hint" style={{ marginTop: 12 }}>Modo demonstração: este profissional é fictício, então ele aceita e sai a caminho sozinho em alguns segundos.</p>}
     </>
   );
@@ -164,7 +180,7 @@ function Avaliar({ reservaId }: { reservaId: string }) {
   const [cb, setCb] = useState(0);
   const [dev, setDev] = useState<boolean | undefined>(undefined);
   const servico = a.categoria === 'servicos';
-  const precisaDevolveu = !a.limpezaInclusa && !servico && r.tipo !== 'servico';
+  const precisaDevolveu = !a.limpezaInclusa && !servico && r.tipo !== 'servico' && r.tipo !== 'ingresso';
   return (
     <>
       <div className="alerta ok">Total final: <b>{brl(r.total)}</b>{r.multa > 0 ? ` (inclui ${brl(r.multa)} de excedente)` : ''}.</div>
