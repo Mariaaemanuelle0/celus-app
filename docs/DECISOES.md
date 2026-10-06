@@ -150,3 +150,10 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Ingressos: regras de meia-entrada e cota obrigatória (lei federal), direito de arrependimento em compra online, responsabilidade do organizador por alvarás, segurança, capacidade e proibição de menores; taxa de serviço destacada no preço.
 - Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
 - LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).
+
+## Ideias para depois (registradas, não construir agora)
+- **Plataforma de pontos própria, no modelo de coalizão (referência citada pela fundadora: Stix).** Uma plataforma só para os celus, separada do app: empresas compram pacotes de celus para dar aos clientes (lojas físicas e também comércios digitais), as pessoas acumulam em vários parceiros e trocam num catálogo de produtos, como um "Mercado Livre de pontos".
+  - Primeiro passo possível dentro do app: "locais geram celus" com modo Caixa para o lojista, venda de pacotes e validade dos pontos.
+  - Transferência entre pessoas segue proibida até validação jurídica; se liberada, no formato "presentear" com limite mensal e só entre contas verificadas.
+  - Condição para virar plataforma separada: base de usuários grande o bastante para os parceiros quererem comprar pontos.
+  - Técnico: manter o extrato de celus como um registro próprio (ledger), para poder separar em outro sistema sem refazer o app.
