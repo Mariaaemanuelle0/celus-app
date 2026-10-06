@@ -43,6 +43,12 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Mapa vetorial (MapLibre) com estilo próprio da Celus, inclinação e prédios em 3D, dados do OpenStreetMap via OpenFreeMap (gratuito). Mapbox pode substituir depois só trocando a configuração.
 - Navegação curva a curva fica com Waze e Google Maps (botões "Como chegar").
 
+## Suporte e conta
+- "Tive um problema" em toda reserva: motivos prontos por tipo (espaço, serviço, ingresso); "me senti inseguro" mostra o 190. Vai para a curadoria, que responde e pode reembolsar parte ou tudo; reembolso por falha de quem ofereceu sai do repasse dele.
+- Quem anuncia cadastra uma chave Pix no próprio nome ou da empresa para receber os repasses.
+- Excluir conta (LGPD): apaga perfil, foto, celus, stories, mensagens; pausa anúncios; mantém registros de pagamento e avaliações sem nome. Bloqueado com reserva em andamento.
+- Endereço do anúncio por busca de endereço ou pin arrastável (Nominatim/OpenStreetMap, uso leve; trocar por serviço pago quando houver volume). O mapa também busca por endereço.
+
 ## Cadastro assistido (lançamento)
 - No início, a fundadora visita os locais, oferece a Celus e cadastra no local, com o celular, para o anfitrião.
 - No app: modo "Cadastro assistido" para a equipe Celus. O pin fica onde a pessoa está; o anfitrião recebe um código (por WhatsApp) e assume o anúncio ao criar a conta com o e-mail informado.

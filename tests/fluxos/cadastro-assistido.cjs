@@ -1,0 +1,11 @@
+const {chromium}=require('playwright');const S=__dirname,U=process.env.CELUS_URL||'http://localhost:4173';
+(async()=>{const b=await chromium.launch();const c=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,geolocation:{latitude:-23.5505,longitude:-46.6333},permissions:['geolocation']});const p=await c.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));p.setDefaultTimeout(8000);
+const cad=async(n,e)=>{await p.goto(U+'/entrar');await p.click('text=Criar conta');await p.fill('#c-nome',n);await p.fill('#c-email',e);await p.fill('#c-senha','12345678');await p.fill('#c-nasc','1990-05-01');await p.check('#c-aceite');await p.click('button:has-text("Continuar")');await p.waitForURL('**/verificar');await p.click('text=Fazer depois');await p.waitForURL(U+'/');};
+await cad('Emanuelle Macedo','emanuelle@celus.com');await p.goto(U+'/perfil');await p.check('.sumline.check input');
+await p.goto(U+'/renda/anunciar');await p.check('.assistido input[type=checkbox]');await p.fill('#as-nome','Seu Ivo');await p.fill('#as-email','ivo@x.com');
+await p.click('.cat:has-text("Ficar")');await p.click('.chip:has-text("Camping")');await p.fill('#a-titulo','Camping do Seu Ivo');await p.setInputFiles('#a-fotos',S+'/foto.jpg');await p.fill('textarea >> nth=1','Silêncio depois das 22h.');await p.click('text=Gerar código para o anfitrião');await p.waitForURL('**/renda');
+console.log('toast:',await p.textContent('.toast'));await p.screenshot({path:S+'/../../.teste-saida/'+Date.now()+'.png',fullPage:false});console.log(await p.textContent('h2:has-text("Cadastros")'));
+await p.goto(U+'/perfil');await p.click('text=Sair da conta');await cad('Ivo Santos','ivo@x.com');await p.goto(U+'/perfil/editar');await p.setInputFiles('#p-foto',S+'/foto.jpg');await p.click('text=Salvar');await p.waitForURL('**/perfil');await p.click('text=Rentabilizar');await p.waitForTimeout(300);await p.screenshot({path:S+'/../../.teste-saida/'+Date.now()+'.png'});
+await p.check('.convite input');await p.click('text=Assumir anúncio');console.log('assumir:',await p.textContent('.toast'));console.log('status:',await p.$$eval('.status',e=>e.map(x=>x.textContent)));
+await p.goto(U+'/');await p.fill('#busca','Ivo');console.log('mapa:',await p.$$eval('.cartao .t',e=>e.map(x=>x.textContent)));
+console.log('errors',errs);await b.close();})();

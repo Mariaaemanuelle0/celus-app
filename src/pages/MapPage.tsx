@@ -6,6 +6,7 @@ import { emDestaque, useAnuncios } from '../data/useAnuncios';
 import { numerosEvento } from '../store/acoes';
 import { IconeCategoria, Miniatura, toast, useLocalizacao } from '../components/ui';
 import { Mapa, type Celula, type Pino } from '../components/Mapa';
+import { buscarEndereco } from '../lib/endereco';
 import { centroPiloto, distanciaKm, formatarDistancia, type Ponto } from '../lib/geo';
 import { brl, dataEvento, nota, precoBase, rotuloPreco, virgula } from '../lib/format';
 import { SLOTS, slotDe } from '../lib/regras';
@@ -87,6 +88,7 @@ export function MapPage() {
   const [colorir, setColorir] = useState(false);
   const [lista, setLista] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const [indo, setIndo] = useState(false);
 
   useEffect(() => { if (gps && seguindoGps) setCentro(gps); }, [gps, seguindoGps]);
 
@@ -128,7 +130,7 @@ export function MapPage() {
         <div className="row" style={{ flexWrap: 'nowrap', gap: 8 }}>
           <div className="busca sp">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-            <input id="busca" type="search" placeholder="Do que você precisa agora?" value={busca} onChange={(e) => { setBusca(e.target.value); setLista(true); }} aria-label="Buscar" />
+            <input id="busca" type="search" placeholder="O que você procura, ou um endereço" value={busca} onChange={(e) => { setBusca(e.target.value); setLista(true); }} aria-label="Buscar" />
           </div>
           <button className={`fbtn ${nFiltros ? 'on' : ''}`} onClick={() => setFiltros(true)} aria-label={`Filtros${nFiltros ? `, ${nFiltros} ativos` : ''}`}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
@@ -181,6 +183,19 @@ export function MapPage() {
               {!lista && <span className="hint folha-sub">{gps ? (seguindoGps ? 'Perto de você' : 'Perto do ponto que você escolheu') : 'Sem sua localização: centro da cidade piloto'}</span>}
             </button>
             <div className="folha-lista">
+              {busca.trim().length >= 4 && (
+                <button className="ir-endereco" disabled={indo} onClick={async () => {
+                  setIndo(true);
+                  try {
+                    const r = await buscarEndereco(busca, centro);
+                    if (!r.length) toast('Não achamos esse endereço');
+                    else { setCentro({ lat: r[0].lat, lng: r[0].lng }); setSeguindoGps(false); setBusca(''); setLista(false); toast(`Procurando perto de ${r[0].nome.split(',')[0]}`); }
+                  } catch (e) { toast((e as Error).message); } finally { setIndo(false); }
+                }}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z" /><circle cx="12" cy="10" r="2.2" /></svg>
+                  {indo ? 'Procurando endereço' : <>Procurar perto do endereço “{busca.trim()}”</>}
+                </button>
+              )}
               {noRaio.map(({ a, d }) => <Cartao key={a.id} a={a} d={d} />)}
               {!noRaio.length && <div className="empty">Nada nesse raio{termo ? ` para "${busca}"` : ''}. Aumente o raio nos filtros ou escolha outra categoria.</div>}
             </div>

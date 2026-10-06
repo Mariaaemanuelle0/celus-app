@@ -5,7 +5,7 @@ import { ComoChegar } from '../components/Rota';
 import { Estrelas, Voltar, toast, useAgora } from '../components/ui';
 import { brl, dataEvento, rotuloHoras } from '../lib/format';
 import { AVISO_MIN, CARENCIA_MIN, cobranca, reembolso } from '../lib/regras';
-import { avaliarAnuncio, avancarChamado, avancarTeste, avisarFim, cancelar, confirmarChegada, encerrar, estender, iniciarUso, relatarPorFora } from '../store/acoes';
+import { abrirSuporte, avaliarAnuncio, avancarChamado, avancarTeste, avisarFim, cancelar, confirmarChegada, encerrar, estender, iniciarUso, relatarPorFora } from '../store/acoes';
 import { useDB } from '../store/db';
 
 const dataHora = (t: number) => new Date(t).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -114,6 +114,7 @@ export function ReservaPage() {
         )}
         <Link className="btn ghost" to={`/anuncio/${a.id}`}>Ver o anúncio</Link>
       </div>
+      {!['cancelada', 'recusado', 'solicitado'].includes(r.status) && <Problema reservaId={r.id} tipo={r.tipo} />}
       {!['cancelada', 'recusado'].includes(r.status) && (
         <div className="regra-pag">
           <b>Tudo já está pago pelo app.</b> Ninguém pode cobrar você em dinheiro, maquininha ou Pix direto, nem por extras ou tempo a mais: isso também é cobrado pelo app.
@@ -198,5 +199,44 @@ function Avaliar({ reservaId }: { reservaId: string }) {
         <p className="hint">Só estrelas, sem comentário. O anfitrião também avalia você.</p>
       </div>
     </>
+  );
+}
+
+const MOTIVOS: Record<string, string[]> = {
+  espaco: ['O local estava sujo ou diferente do anúncio', 'Não consegui entrar', 'Ninguém me recebeu', 'Cobrança errada', 'Me senti inseguro', 'Outro'],
+  servico: ['O profissional não apareceu', 'O serviço ficou mal feito', 'Cobrança errada', 'Me senti inseguro', 'Outro'],
+  ingresso: ['O evento foi diferente do anunciado', 'Não consegui entrar', 'Cobrança errada', 'Me senti inseguro', 'Outro'],
+};
+
+/** "Tive um problema": abre um chamado com a equipe Celus e mostra a resposta aqui mesmo. */
+function Problema({ reservaId, tipo }: { reservaId: string; tipo: string }) {
+  const chamados = useDB((d) => d.suporte);
+  const meu = chamados.find((s) => s.reservaId === reservaId);
+  const [aberto, setAberto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [texto, setTexto] = useState('');
+  const [erro, setErro] = useState('');
+  const lista = MOTIVOS[tipo === 'servico' ? 'servico' : tipo === 'ingresso' ? 'ingresso' : 'espaco'];
+  if (meu) return (
+    <div className={`alerta ${meu.status === 'aberto' ? 'warn' : 'ok'}`} style={{ marginTop: 16 }}>
+      <b>{meu.status === 'aberto' ? 'Seu relato está com a equipe Celus.' : 'Relato respondido.'}</b> {meu.motivo}.
+      {meu.resposta && <p style={{ margin: '8px 0 0' }}>{meu.resposta}{meu.reembolso ? ` Reembolso de ${brl(meu.reembolso)}.` : ''}</p>}
+    </div>
+  );
+  if (!aberto) return <button className="back" style={{ marginTop: 16 }} onClick={() => setAberto(true)}>Tive um problema</button>;
+  return (
+    <div className="box" style={{ padding: 14, marginTop: 16 }}>
+      <b>O que aconteceu?</b>
+      <div className="stack" style={{ gap: 6, marginTop: 10 }}>
+        {lista.map((m) => <button key={m} type="button" className="chip" style={{ textAlign: 'left', whiteSpace: 'normal' }} aria-pressed={motivo === m} onClick={() => setMotivo(m)}>{m}</button>)}
+      </div>
+      {motivo === 'Me senti inseguro' && <div className="alerta bad" style={{ marginTop: 10 }}><b>Se estiver em perigo agora, ligue 190.</b> Depois conte para a gente aqui.</div>}
+      <textarea rows={3} maxLength={500} style={{ marginTop: 10 }} placeholder="Conte em poucas palavras (opcional)" value={texto} onChange={(e) => setTexto(e.target.value)} aria-label="Detalhes" />
+      {erro && <p className="erro" style={{ marginTop: 8 }}>{erro}</p>}
+      <div className="row" style={{ marginTop: 10 }}>
+        <button className="btn sm" disabled={!motivo} onClick={() => { const r = abrirSuporte(reservaId, motivo, texto); if (r.ok) { toast('Relato enviado'); setAberto(false); } else setErro(r.erro); }}>Enviar relato</button>
+        <button className="btn sm ghost" onClick={() => setAberto(false)}>Cancelar</button>
+      </div>
+    </div>
   );
 }

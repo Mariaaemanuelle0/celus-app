@@ -473,11 +473,13 @@ export const conferirRevisao = (id: string, manter: boolean) => mudar((d) => {
 type DadosAnuncio = Omit<Anuncio, 'id' | 'donoId' | 'status' | 'notaQualidade' | 'notaCustoBeneficio' | 'totalAvaliacoes' | 'totalSonhos' | 'criadoEm' | 'agenda' | 'lat' | 'lng'>;
 
 /** Edita um anúncio. Preço e extras valem só para as próximas reservas; título, fotos e descrição passam pela curadoria. */
-export function editarAnuncio(id: string, dados: DadosAnuncio) {
+export function editarAnuncio(id: string, dados: DadosAnuncio, local?: Ponto) {
   mudar((d) => {
     const a = d.anuncios.find((x) => x.id === id); if (!a || a.donoId !== d.sessao) return;
-    const mudouVitrine = a.titulo !== dados.titulo || a.descricao !== dados.descricao || JSON.stringify(a.fotos) !== JSON.stringify(dados.fotos);
+    const mudouLocal = !!local && distanciaKm(local, a) > 0.03;
+    const mudouVitrine = mudouLocal || a.titulo !== dados.titulo || a.descricao !== dados.descricao || JSON.stringify(a.fotos) !== JSON.stringify(dados.fotos);
     Object.assign(a, dados);
+    if (local) { a.lat = local.lat; a.lng = local.lng; }
     if (mudouVitrine && a.status === 'aprovado') a.revisar = true;
     if (a.status === 'recusado') a.status = 'pendente';
   });
@@ -663,6 +665,89 @@ export function avisarInteressados(anuncioId: string, texto: string): Resultado 
     const x = d.anuncios.find((y) => y.id === anuncioId)!; x.evento!.avisos = { ...x.evento!.avisos, ultimoManual: Date.now() };
     const compraram = compradoresDe(d, x.id);
     d.interesses.filter((i) => i.anuncioId === x.id && !compraram.has(i.userId)).forEach((i) => notificar(d, i.userId, `${x.titulo}: ${t}`, `/anuncio/${x.id}`));
+  });
+  return { ok: true };
+}
+
+/* ---------- Suporte ---------- */
+export function abrirSuporte(reservaId: string, motivo: string, texto: string): Resultado {
+  const d0 = ler(); const uid = d0.sessao; if (!uid) return falha('Entre na sua conta.');
+  const r = d0.reservas.find((x) => x.id === reservaId); if (!r || r.userId !== uid) return falha('Reserva não encontrada.');
+  if (!motivo) return falha('Escolha o que aconteceu.');
+  if (d0.suporte.some((s) => s.reservaId === reservaId && s.status === 'aberto')) return falha('Já existe um chamado aberto para esta reserva.');
+  const t = texto.trim().slice(0, 500);
+  mudar((d) => {
+    d.suporte.unshift({ id: novoId(), reservaId, userId: uid, anuncioId: r.anuncioId, motivo, texto: t, t: Date.now(), status: 'aberto' });
+    notificar(d, uid, 'Recebemos seu relato. A equipe Celus responde por aqui.', `/reserva/${reservaId}`);
+  });
+  return { ok: true };
+}
+
+/** Equipe Celus responde. Reembolso sai do valor pago e, se a falha foi de quem ofereceu, é descontado do repasse dele. */
+export function resolverSuporte(id: string, resposta: string, reembolso: number): Resultado {
+  const d0 = ler(); const uid = d0.sessao;
+  if (!uid || !d0.usuarios[uid]?.equipeCelus) return falha('Só a equipe Celus resolve chamados.');
+  const s0 = d0.suporte.find((x) => x.id === id); if (!s0) return falha('Chamado não encontrado.');
+  const r0 = d0.reservas.find((x) => x.id === s0.reservaId); if (!r0) return falha('Reserva não encontrada.');
+  const max = r0.total - (r0.reembolso ?? 0);
+  const v = Math.max(0, Math.min(max, Math.round(reembolso * 100) / 100));
+  if (resposta.trim().length < 5) return falha('Escreva a resposta para o cliente.');
+  mudar((d) => {
+    const s = d.suporte.find((x) => x.id === id)!; const r = d.reservas.find((x) => x.id === s.reservaId)!;
+    s.status = 'resolvido'; s.resposta = resposta.trim(); s.reembolso = v; s.resolvidoEm = Date.now();
+    if (v > 0) r.reembolso = (r.reembolso ?? 0) + v;
+    notificar(d, s.userId, `Seu chamado foi respondido${v > 0 ? `. Reembolso de ${brlTxt(v)}` : ''}.`, `/reserva/${r.id}`);
+    const a = d.anuncios.find((x) => x.id === r.anuncioId);
+    if (v > 0) notificar(d, a?.donoId, `A Celus reembolsou ${brlTxt(v)} a um cliente de ${a?.titulo ?? 'seu anúncio'} depois de um relato. O valor sai do seu próximo repasse.`, '/renda');
+  });
+  return { ok: true };
+}
+
+/* ---------- Conta: recebimento e exclusão ---------- */
+const soDigitos = (s: string) => s.replace(/\D/g, '');
+function cpfValido(c: string) {
+  if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
+  const dv = (n: number) => { let s = 0; for (let i = 0; i < n; i++) s += Number(c[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+  return dv(9) === Number(c[9]) && dv(10) === Number(c[10]);
+}
+
+export function salvarRecebimento(tipo: NonNullable<import('../data/types').Usuario['recebimento']>['tipo'], chave: string, titular: string): Resultado {
+  const id = sessao(); if (!id) return falha('Entre na sua conta.');
+  let k = chave.trim();
+  if (tipo === 'cpf') { k = soDigitos(k); if (!cpfValido(k)) return falha('CPF inválido.'); }
+  if (tipo === 'cnpj') { k = soDigitos(k); if (k.length !== 14) return falha('CNPJ precisa ter 14 números.'); }
+  if (tipo === 'celular') { k = soDigitos(k); if (k.length < 10 || k.length > 11) return falha('Celular com DDD, só números.'); }
+  if (tipo === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(k)) return falha('E-mail inválido.');
+  if (tipo === 'aleatoria' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k)) return falha('Chave aleatória inválida.');
+  if (titular.trim().length < 3) return falha('Informe o nome do titular da conta.');
+  mudar((d) => { d.usuarios[id].recebimento = { tipo, chave: k, titular: titular.trim() }; });
+  return { ok: true };
+}
+
+/** Exclui a conta (LGPD). Pagamentos ficam guardados sem nome pelo prazo da lei; o resto é apagado. */
+export async function excluirConta(senha: string): Promise<Resultado> {
+  const d0 = ler(); const uid = d0.sessao; if (!uid) return falha('Entre na sua conta.');
+  const u = d0.usuarios[uid];
+  if (u.senhaHash !== (await hash(senha))) return falha('Senha incorreta.');
+  const meus = new Set(d0.anuncios.filter((a) => a.donoId === uid).map((a) => a.id));
+  const ativo = (r: Reserva) => ['confirmada', 'em_uso', 'solicitado', 'aceito', 'a_caminho', 'em_andamento'].includes(r.status);
+  if (d0.reservas.some((r) => r.userId === uid && ativo(r))) return falha('Você tem reservas em andamento. Cancele ou conclua antes de excluir a conta.');
+  if (d0.reservas.some((r) => meus.has(r.anuncioId) && ativo(r))) return falha('Seus anúncios têm reservas em andamento. Conclua ou cancele antes de excluir a conta.');
+  mudar((d) => {
+    delete d.usuarios[uid]; delete d.carteiras[uid];
+    d.sonhos = d.sonhos.filter((x) => x.userId !== uid);
+    d.interesses = d.interesses.filter((x) => x.userId !== uid);
+    d.checkins = d.checkins.filter((x) => x.userId !== uid);
+    d.curtidas = d.curtidas.filter((x) => x.userId !== uid);
+    d.stories = d.stories.filter((x) => x.autorId !== uid);
+    d.chat = d.chat.filter((x) => x.autorId !== uid);
+    d.notificacoes = d.notificacoes.filter((x) => x.userId !== uid);
+    d.semaforo = d.semaforo.map((x) => (x.userId === uid ? { ...x, userId: 'anonimo' } : x));
+    d.reservas.forEach((r) => { if (r.userId === uid) { r.userId = 'conta-excluida'; r.destino = undefined; } });
+    d.avaliacoes.forEach((a) => { if (a.autorId === uid) a.autorId = 'conta-excluida'; });
+    d.anuncios.forEach((a) => { if (a.donoId === uid) { a.status = 'pausado'; a.donoId = 'conta-excluida'; } });
+    d.suporte.forEach((s) => { if (s.userId === uid) { s.userId = 'conta-excluida'; s.texto = ''; } });
+    d.sessao = null;
   });
   return { ok: true };
 }

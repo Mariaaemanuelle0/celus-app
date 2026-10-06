@@ -1,0 +1,8 @@
+const {chromium}=require('playwright');const S=__dirname,U=process.env.CELUS_URL||'http://localhost:4173';
+(async()=>{const b=await chromium.launch();const c=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,geolocation:{latitude:-23.5505,longitude:-46.6333},permissions:['geolocation']});const p=await c.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));p.setDefaultTimeout(8000);
+await p.goto(U+'/entrar');await p.click('text=Criar conta');await p.fill('#c-nome','Caio Teste');await p.fill('#c-email','c@x.com');await p.fill('#c-senha','12345678');await p.fill('#c-nasc','1990-05-01');await p.check('#c-aceite');await p.click('button:has-text("Continuar")');await p.waitForURL('**/verificar');await p.setInputFiles('#v-doc',S+'/foto.jpg');await p.setInputFiles('#v-selfie',S+'/foto.jpg');await p.click('text=Enviar para verificação');await p.waitForURL(U+'/');
+await p.fill('#busca','camping');console.log(await p.$$eval('.cartao .preco',e=>e.map(x=>x.textContent)));await p.click('.cartao >> nth=0');await p.waitForTimeout(300);
+console.log('dia:',await p.textContent('.acao-total b'));await p.click('.seg >> text=Acampar');await p.selectOption('#r-hospedes','3');await p.selectOption('#r-noites','2');console.log('acampar:',await p.textContent('.acao-total b'));
+await p.waitForTimeout(400);await p.screenshot({path:S+'/../../.teste-saida/'+Date.now()+'.png'});
+await p.click('button:has-text("Confirmar e pagar")');await p.click('text=Gerar Pix');await p.click('text=Simular Pix recebido');await p.waitForURL('**/reserva/**');console.log('total reserva:',await p.textContent('.resumo .sumline:last-child'));
+console.log('errors',errs);await b.close();})();

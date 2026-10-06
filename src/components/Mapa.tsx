@@ -44,6 +44,7 @@ export function Mapa({ centro, raioKm, pinos, celulas, mudarPonto, onMover, onPi
   const eu = useRef<Marker | null>(null);
   const [pronto, setPronto] = useState(false);
   const [falhou, setFalhou] = useState(false);
+  const [tick, setTick] = useState(0);
   const cbs = useRef({ onMover, onPino, onFundo, mudarPonto });
   cbs.current = { onMover, onPino, onFundo, mudarPonto };
 
@@ -76,6 +77,8 @@ export function Mapa({ centro, raioKm, pinos, celulas, mudarPonto, onMover, onPi
       m.addLayer({ id: 'sema-fill', type: 'fill', source: 'sema', paint: { 'fill-color': ['get', 'cor'], 'fill-opacity': ['get', 'op'] } }, 'raio-fill');
       setPronto(true);
     });
+    // Reagrupa os pinos quando o zoom ou a inclinação mudam.
+    m.on('moveend', () => setTick((t) => t + 1));
     m.on('click', (e) => {
       if (cbs.current.mudarPonto) cbs.current.onMover({ lat: e.lngLat.lat, lng: e.lngLat.lng });
       else cbs.current.onFundo();
@@ -106,31 +109,59 @@ export function Mapa({ centro, raioKm, pinos, celulas, mudarPonto, onMover, onPi
     (mapa.current.getSource('sema') as GeoJSONSource).setData(fc(celulas.map((c) => ({ type: 'Feature', properties: { cor: c.cor, op: c.opacidade }, geometry: { type: 'Polygon', coordinates: [c.coords] } }))));
   }, [pronto, celulas]);
 
-  // Pinos: cria, atualiza e remove sem recriar o mapa.
+  // Pinos: cria, atualiza e remove sem recriar o mapa. Pinos muito próximos viram um grupo com a contagem.
   useEffect(() => {
     const m = mapa.current; if (!m) return;
+    type Item = { id: string; lat: number; lng: number; html: string; classe: string; cor: string; z: number; ids?: string[] };
+    const itens: Item[] = [];
+    const agrupar = m.getZoom() < 16.5;
+    const livres = [...pinos].sort((x, y) => (y.z ?? 1) - (x.z ?? 1));
+    const usado = new Set<string>();
+    const tela = new globalThis.Map(pinos.map((p) => [p.id, m.project([p.lng, p.lat])]));
+    for (const p of livres) {
+      if (usado.has(p.id)) continue;
+      usado.add(p.id);
+      const fixo = (p.z ?? 1) >= 10; // o selecionado nunca entra em grupo
+      const perto = !agrupar || fixo ? [] : livres.filter((q) => {
+        if (usado.has(q.id) || (q.z ?? 1) >= 10) return false;
+        const a = tela.get(p.id)!, b = tela.get(q.id)!;
+        return Math.hypot(a.x - b.x, a.y - b.y) < 46;
+      });
+      if (!perto.length) { itens.push({ ...p, z: p.z ?? 1 }); continue; }
+      perto.forEach((q) => usado.add(q.id));
+      const todos = [p, ...perto];
+      itens.push({
+        id: 'g:' + todos.map((x) => x.id).sort().join(','), ids: todos.map((x) => x.id),
+        lat: todos.reduce((s2, x) => s2 + x.lat, 0) / todos.length, lng: todos.reduce((s2, x) => s2 + x.lng, 0) / todos.length,
+        html: `<b>${todos.length}</b>`, classe: 'grupo', cor: '#4C8DFF', z: 2,
+      });
+    }
     const atuais = marcadores.current;
-    const ids = new Set(pinos.map((p) => p.id));
+    const ids = new Set(itens.map((p) => p.id));
     for (const [id, mk] of atuais) if (!ids.has(id)) { mk.remove(); atuais.delete(id); }
-    for (const p of pinos) {
+    for (const p of itens) {
       let mk: Marker | undefined = atuais.get(p.id);
       if (!mk) {
         const el = document.createElement('button');
         el.type = 'button';
-        el.addEventListener('click', (ev) => { ev.stopPropagation(); cbs.current.onPino(p.id); });
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (p.ids) m.easeTo({ center: [p.lng, p.lat], zoom: Math.min(18, m.getZoom() + 1.6), duration: 500 });
+          else cbs.current.onPino(p.id);
+        });
         const novo = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([p.lng, p.lat]).addTo(m);
         atuais.set(p.id, novo);
         mk = novo;
       }
       const el = mk.getElement();
       el.className = 'pin-alvo';
-      el.style.zIndex = String(p.z ?? 1);
+      el.style.zIndex = String(p.z);
       const html = `<span class="pin ${p.classe}" style="--c:${p.cor}">${p.html}</span>`;
       if (el.innerHTML !== html) el.innerHTML = html;
-      el.setAttribute('aria-label', el.textContent ?? 'Lugar');
+      el.setAttribute('aria-label', p.ids ? `${p.ids.length} lugares juntos. Toque para aproximar` : el.textContent ?? 'Lugar');
       mk.setLngLat([p.lng, p.lat]);
     }
-  }, [pinos]);
+  }, [pinos, tick]);
 
   useEffect(() => { if (mapa.current) mapa.current.getCanvas().style.cursor = mudarPonto ? 'crosshair' : ''; }, [mudarPonto]);
 

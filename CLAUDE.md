@@ -25,6 +25,7 @@ Leia antes de qualquer tarefa:
 ## Comandos
 - `npm run dev` — servidor local
 - `npm run build` — checagem de tipos + build de produção
+- `npm run teste:fluxos` — testes de ponta a ponta (com `npm run preview` rodando; outro endereço via `CELUS_URL`). Rodar antes de cada publicação. Na primeira vez: `npx playwright install chromium`.
 
 ## Identidade visual
 Preto e azul-marinho com acento azul elétrico. Tokens em `src/styles/tokens.css`. Fontes: Unbounded (títulos), Instrument Sans (texto), JetBrains Mono (números, preços, timer).

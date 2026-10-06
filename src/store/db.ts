@@ -2,7 +2,7 @@
 // Quando o Supabase for ligado, estas ações passam a chamar o servidor; as telas não mudam.
 import { useSyncExternalStore } from 'react';
 import type {
-  Anuncio, Avaliacao, Beneficio, Carteira, Denuncia, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Usuario,
+  Anuncio, Avaliacao, Beneficio, Carteira, Denuncia, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
 } from '../data/types';
 import { anunciosFicticios } from '../data/seed';
 import { centroPiloto } from '../lib/geo';
@@ -26,6 +26,7 @@ export type DB = {
   denuncias: Denuncia[];
   notificacoes: Notificacao[];
   interesses: { userId: string; anuncioId: string; t: number }[];
+  suporte: Suporte[];
 };
 
 const CHAVE = 'celus-db-v1';
@@ -61,6 +62,7 @@ function inicial(): DB {
     denuncias: [],
     notificacoes: [],
     interesses: [],
+    suporte: [],
   };
 }
 
@@ -72,6 +74,7 @@ function carregar(): DB {
       if (db.versao === 1) {
         db.notificacoes ??= [];
         db.interesses ??= [];
+        db.suporte ??= [];
         for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
         return db;
       }

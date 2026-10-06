@@ -67,7 +67,8 @@ export const taxaUsuarioDe = (a: Anuncio, tipo: Reserva['tipo']) =>
   tipo === 'servico' ? TAXA_SERVICO : a.categoria === 'ficar' || a.categoria === 'eventos' ? 0 : TAXA_HORA;
 
 export const comissaoDe = (r: Reserva) => r.comissao ?? COMISSAO;
-export const parteAnfitriao = (r: Reserva) => r.subtotal * (1 - comissaoDe(r));
+/** O que fica para quem ofereceu. Reembolso dado depois de um relato sai daqui (reserva concluída). */
+export const parteAnfitriao = (r: Reserva) => Math.max(0, r.subtotal * (1 - comissaoDe(r)) - (r.status === 'cancelada' ? 0 : r.reembolso ?? 0));
 
 /** Quando o dinheiro do anfitrião é liberado: hora e serviço D+1 depois do uso; estadia 24 h após o check-in. */
 export function repasse(r: Reserva, agora = Date.now()): { estado: 'retido' | 'agendado' | 'liberado' | 'nenhum'; quando?: number } {

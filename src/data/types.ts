@@ -90,6 +90,8 @@ export type Usuario = {
   comissaoReduzidaAte?: number;
   /** Última forma de pagamento usada: vira a escolha padrão na próxima (pagar rápido). */
   ultimoPagamento?: 'pix' | 'cartao';
+  /** Onde quem anuncia recebe os repasses. */
+  recebimento?: { tipo: 'cpf' | 'cnpj' | 'email' | 'celular' | 'aleatoria'; chave: string; titular: string };
 };
 
 export type StatusReserva = 'confirmada' | 'em_uso' | 'concluida' | 'cancelada' | 'solicitado' | 'aceito' | 'a_caminho' | 'em_andamento' | 'recusado';
@@ -160,3 +162,10 @@ export type Carteira = { saldo: number; hist: Lancamento[]; hoje: { dia: string;
 export type Beneficio = { id: string; grupo: 'local' | 'evento' | 'celus' | 'anfitriao'; anuncioId?: string; nome: string; desc: string; custo: number };
 
 export type Denuncia = { id: string; storyId: string; por: 'Usuário' | 'Anfitrião'; motivo: string; t: number };
+
+/** Problema relatado numa reserva ("Tive um problema"). A equipe Celus responde e decide reembolso. */
+export type Suporte = {
+  id: string; reservaId: string; userId: string; anuncioId: string;
+  motivo: string; texto: string; t: number;
+  status: 'aberto' | 'resolvido'; resposta?: string; reembolso?: number; resolvidoEm?: number;
+};

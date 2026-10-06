@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { EscolherLocal } from '../components/EscolherLocal';
+import type { Ponto } from '../lib/geo';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ACESSO, CATEGORIAS, COMODIDADES, ORDEM_CATEGORIAS, PROFISSOES } from '../data/catalogo';
 import type { Agenda, Anuncio, Categoria, Extra, Lote, Pacote } from '../data/types';
@@ -12,7 +14,7 @@ import {
   COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, TAXA_INGRESSO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
 } from '../lib/regras';
 import {
-  alternarDisponivel, arquivarPorFora, avisarInteressados, cancelarEvento, numerosEvento, validarIngresso, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
+  alternarDisponivel, arquivarPorFora, resolverSuporte, salvarRecebimento, avisarInteressados, cancelarEvento, numerosEvento, validarIngresso, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
   denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
 } from '../store/acoes';
 import { useDB, useUsuario } from '../store/db';
@@ -109,6 +111,9 @@ export function Painel() {
         </>
       )}
 
+      {u.recebimento
+        ? <Link to="/renda/recebimento" className="recebe"><span className="hint">Você recebe no Pix</span><span>{mascara(u.recebimento)}</span><span className="hint">Trocar</span></Link>
+        : <Link to="/renda/recebimento" className="alerta warn" style={{ display: 'block', marginTop: 16, color: 'var(--text)', textDecoration: 'none' }}><b>Cadastre onde receber.</b> Sem uma chave Pix, os repasses ficam guardados até você informar.</Link>}
       <div className="kpis" style={{ marginTop: 16 }}>
         <div className="box kpi"><b className="num">{brl(aLiberar)}</b><span>a liberar</span></div>
         <div className="box kpi"><b className="num">{brl(liberado)}</b><span>liberado</span></div>
@@ -299,12 +304,13 @@ type Rascunho = {
   pacotes: Pacote[]; horasFicar: boolean; preco: number; unidade: string; porPessoa: boolean; metragem: number; capacidade: number;
   comodidades: string[]; extras: Extra[]; acesso: NonNullable<Anuncio['tipoAcesso']>; responsavel: string; manual: string; limpeza: boolean; fotos: string[];
   inicioEvento: string; duracaoH: number; lotes: Lote[]; vendasAbrem: string;
+  local: Ponto | null;
 };
 const RASCUNHO: Rascunho = {
   cat: 'descanso', sub: 'rede', prof: '', titulo: '', bairro: '', descricao: '',
   pacotes: [{ horas: 1, preco: 10 }, { horas: 3, preco: 25 }, { horas: 6, preco: 45 }], horasFicar: true, preco: 100, unidade: '/h', porPessoa: false, metragem: 10, capacidade: 1,
   comodidades: [], extras: [], acesso: 'responsavel', responsavel: '', manual: '', limpeza: false, fotos: [],
-  inicioEvento: '', duracaoH: 5, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 100, vendidos: 0, meia: true }], vendasAbrem: '',
+  inicioEvento: '', duracaoH: 5, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 100, vendidos: 0, meia: true }], vendasAbrem: '', local: null,
 };
 const PACOTES_FICAR: Pacote[] = [{ horas: 3, preco: 40 }, { horas: 6, preco: 65 }, { horas: 12, preco: 90 }];
 const tipoPrecoDe = (c: Categoria, sub?: string): Anuncio['tipoPreco'] => (c === 'eventos' && sub === 'ingressos' ? 'ingresso' : c === 'ficar' ? 'diaria' : c === 'imoveis' ? 'valor' : c === 'servicos' ? 'servico' : 'pacote');
@@ -317,6 +323,7 @@ function deAnuncio(a: Anuncio): Rascunho {
     comodidades: a.comodidades, extras: a.extras, acesso: a.tipoAcesso ?? 'responsavel', responsavel: a.responsavelLocal ?? '', manual: a.manualBonsModos, limpeza: a.limpezaInclusa, fotos: a.fotos,
     inicioEvento: a.evento ? new Date(a.evento.inicio - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '',
     duracaoH: a.evento ? Math.round((a.evento.fim - a.evento.inicio) / 3600_000) : 5, lotes: a.lotes ?? RASCUNHO.lotes,
+    local: { lat: a.lat, lng: a.lng },
     vendasAbrem: a.evento?.vendasAbrem ? new Date(a.evento.vendasAbrem - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '',
   };
 }
@@ -368,10 +375,10 @@ export function Anunciar() {
       )}
       <FormAnuncio inicial={RASCUNHO} titulo={assistido ? 'Cadastrar para um anfitrião' : 'Anunciar'} botao={assistido ? 'Gerar código para o anfitrião' : 'Enviar para aprovação'}
         lead={assistido
-          ? `O pin fica onde você está agora${onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. Como você esteve no local, o anúncio entra no mapa assim que o anfitrião assumir.`
-          : `O anúncio fica na posição onde você está agora${onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. A equipe Celus revisa antes de publicar.`}
+          ? 'Confira o pin no endereço exato. Como você esteve no local, o anúncio entra no mapa assim que o anfitrião assumir.'
+          : 'A equipe Celus revisa antes de publicar.'}
         onEnviar={(f) => {
-          const p = onde ?? centroPiloto();
+          const p = f.local ?? onde ?? centroPiloto();
           const dados = { ...paraDados(f), lat: p.lat, lng: p.lng, agenda: agendaPadrao(tipoPrecoDe(f.cat, f.sub)) };
           if (assistido) {
             const r = criarAnuncioAssistido(dados, anf);
@@ -395,14 +402,16 @@ export function EditarAnuncio() {
     <>
       <Voltar para="/renda" />
       <FormAnuncio inicial={deAnuncio(a)} titulo="Editar anúncio" botao="Salvar mudanças" travarCategoria
-        lead="Preço, pacotes e extras valem para as próximas reservas. Reservas já feitas mantêm o valor combinado. Mudanças no título, nas fotos ou na descrição passam pela curadoria, e o anúncio segue no ar enquanto isso."
-        onEnviar={(f) => { editarAnuncio(a.id, paraDados(f)); toast('Mudanças salvas'); nav('/renda'); }} />
+        lead="Preço, pacotes e extras valem para as próximas reservas. Reservas já feitas mantêm o valor combinado. Mudanças no título, nas fotos, na descrição ou no endereço passam pela curadoria, e o anúncio segue no ar enquanto isso."
+        onEnviar={(f) => { editarAnuncio(a.id, paraDados(f), f.local ?? undefined); toast('Mudanças salvas'); nav('/renda'); }} />
     </>
   );
 }
 
 function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }: { inicial: Rascunho; titulo: string; lead: string; botao: string; onEnviar: (f: Rascunho) => void; travarCategoria?: boolean }) {
   const [f, setF] = useState<Rascunho>(inicial);
+  const gps = useLocalizacao();
+  useEffect(() => { if (gps && !f.local) setF((x) => (x.local ? x : { ...x, local: gps })); }, [gps, f.local]);
   const [erro, setErro] = useState('');
   const set = <K extends keyof Rascunho>(k: K, v: Rascunho[K]) => setF((x) => ({ ...x, [k]: v }));
   const tipo = tipoPrecoDe(f.cat, f.sub);
@@ -442,6 +451,8 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
         {servico && <div><div className="flabel">Profissão</div><div className="chips">{Object.entries(PROFISSOES[f.sub]).map(([k, n]) => <button type="button" key={k} className="chip" aria-pressed={f.prof === k} onClick={() => set('prof', k)}>{n}</button>)}</div></div>}
         <label className="campo">{servico ? 'Seu nome e profissão' : 'Título'}<input id="a-titulo" value={f.titulo} onChange={(e) => set('titulo', e.target.value)} placeholder={servico ? 'Ex.: Ana, eletricista' : 'Ex.: Varanda com rede e ducha'} /></label>
         <label className="campo">Bairro<input id="a-bairro" value={f.bairro} onChange={(e) => set('bairro', e.target.value)} /></label>
+        <div><div className="flabel">Onde fica <span className="hint">o pin mostra a entrada para quem vai chegar</span></div>
+          <EscolherLocal valor={f.local ?? gps ?? centroPiloto()} gps={gps} onChange={(p) => set('local', p)} /></div>
         <label className="campo">Descrição<textarea id="a-desc" rows={3} value={f.descricao} onChange={(e) => set('descricao', e.target.value)} /></label>
         <div><div className="flabel">Fotos <span className="hint">mínimo 1, ideal 3 ou mais</span></div>
           <div className="uploads">{f.fotos.map((src, i) => <button type="button" key={i} className="fotoedit" onClick={() => set('fotos', f.fotos.filter((_, j) => j !== i))} aria-label="Remover foto"><img src={src} alt="" /><span>×</span></button>)}<label className="addfoto">+<input id="a-fotos" type="file" accept="image/*" multiple onChange={async (e) => { const fs = [...(e.target.files ?? [])].slice(0, 6); const lidas = await Promise.all(fs.map((x) => lerImagem(x))); set('fotos', [...f.fotos, ...lidas].slice(0, 8)); }} /></label></div></div>
@@ -552,6 +563,36 @@ function Engajamento({ a }: { a: Anuncio }) {
   );
 }
 
+const TIPOS_PIX = { cpf: 'CPF', cnpj: 'CNPJ', email: 'E-mail', celular: 'Celular', aleatoria: 'Chave aleatória' } as const;
+const mascara = (r: NonNullable<ReturnType<typeof useUsuario>>['recebimento']) => {
+  if (!r) return '';
+  const k = r.chave;
+  return `${TIPOS_PIX[r.tipo]} ${r.tipo === 'email' ? k.replace(/^(.{2}).*(@.*)$/, '$1•••$2') : '•••' + k.slice(-4)}`;
+};
+
+export function Recebimento() {
+  const u = useUsuario()!;
+  const nav = useNavigate();
+  const [tipo, setTipo] = useState<keyof typeof TIPOS_PIX>(u.recebimento?.tipo ?? 'cpf');
+  const [chave, setChave] = useState(u.recebimento?.chave ?? '');
+  const [titular, setTitular] = useState(u.recebimento?.titular ?? u.nome);
+  const [erro, setErro] = useState('');
+  return (
+    <>
+      <Voltar para="/renda" />
+      <h1>Onde você recebe</h1>
+      <p className="lead">Os repasses caem nesta chave Pix: D+1 depois de cada uso, 24 h após o check-in nas estadias e D+1 depois do evento.</p>
+      <div className="flabel">Tipo de chave</div>
+      <div className="chips">{(Object.keys(TIPOS_PIX) as (keyof typeof TIPOS_PIX)[]).map((t) => <button key={t} type="button" className="chip" aria-pressed={tipo === t} onClick={() => setTipo(t)}>{TIPOS_PIX[t]}</button>)}</div>
+      <label className="campo" style={{ marginTop: 14 }}>Chave<input id="r-chave" value={chave} inputMode={tipo === 'email' || tipo === 'aleatoria' ? 'text' : 'numeric'} onChange={(e) => setChave(e.target.value)} /></label>
+      <label className="campo" style={{ marginTop: 12 }}>Nome do titular<input id="r-titular" value={titular} onChange={(e) => setTitular(e.target.value)} /></label>
+      <p className="hint">A conta precisa estar no seu nome ou no da sua empresa. Isso evita fraude e é exigência do pagamento com divisão automática.</p>
+      {erro && <p className="erro">{erro}</p>}
+      <button className="btn" style={{ marginTop: 12 }} onClick={() => { const r = salvarRecebimento(tipo, chave, titular); if (r.ok) { toast('Chave Pix salva'); nav('/renda'); } else setErro(r.erro); }}>Salvar</button>
+    </>
+  );
+}
+
 /* ---------------- Portaria do evento ---------------- */
 export function Portaria() {
   const { id } = useParams();
@@ -586,6 +627,29 @@ export function Portaria() {
         : <div className="alerta warn">Todas as pessoas recebem o valor inteiro de volta, incluindo a taxa. Isso não pode ser desfeito.
             <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => { cancelarEvento(a.id); toast('Evento cancelado. Reembolsos enviados'); }}>Cancelar evento</button><button className="btn sm ghost" onClick={() => setConfirmaCancel(false)}>Voltar</button></div></div>}
     </>
+  );
+}
+
+function ResolverSuporte({ id }: { id: string }) {
+  const s = useDB((d) => d.suporte.find((x) => x.id === id))!;
+  const r = useDB((d) => d.reservas.find((x) => x.id === s.reservaId));
+  const a = useDB((d) => d.anuncios.find((x) => x.id === s.anuncioId));
+  const nome = useDB((d) => d.usuarios[s.userId]?.nome ?? 'Cliente');
+  const [resp, setResp] = useState('');
+  const [valor, setValor] = useState(0);
+  if (!r) return null;
+  const max = r.total - (r.reembolso ?? 0);
+  return (
+    <div className="box" style={{ padding: 14 }}>
+      <b>{s.motivo}</b>
+      <div className="meta">{nome} em {a?.titulo}, {new Date(s.t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}. Pago: {brl(r.total)}.</div>
+      {s.texto && <p className="manual" style={{ marginTop: 8 }}>{s.texto}</p>}
+      <textarea rows={2} style={{ marginTop: 8 }} placeholder="Resposta para o cliente" value={resp} onChange={(e) => setResp(e.target.value)} aria-label="Resposta" />
+      <div className="row" style={{ marginTop: 8, flexWrap: 'nowrap' }}>
+        <label className="campo" style={{ flex: 1 }}>Reembolso (até {brl(max)})<input type="number" min={0} max={max} step="0.5" value={valor} onChange={(e) => setValor(Number(e.target.value))} /></label>
+        <button className="btn sm" style={{ alignSelf: 'flex-end', marginBottom: 6 }} onClick={() => { const x = resolverSuporte(id, resp, valor); toast(x.ok ? 'Chamado resolvido' : x.erro); }}>Responder</button>
+      </div>
+    </div>
   );
 }
 
@@ -649,6 +713,8 @@ export function Curadoria() {
   const revisar = anuncios.filter((a) => a.revisar);
   const travadas = reservas.filter((r) => r.codigoTravado);
   const porFora = reservas.filter((r) => r.pagamentoPorFora);
+  const suporte = useDB((d) => d.suporte);
+  const abertos = suporte.filter((x) => x.status === 'aberto');
   return (
     <>
       <h1>Curadoria</h1>
@@ -682,6 +748,8 @@ export function Curadoria() {
           </div>
         </div>
       ))}</div> : <div className="empty">Fila vazia.</div>}
+      <h2>Problemas relatados {abertos.length ? <span className="coin">{abertos.length}</span> : null}</h2>
+      {abertos.length ? <div className="stack">{abertos.map((x) => <ResolverSuporte key={x.id} id={x.id} />)}</div> : <div className="empty">Nenhum relato aberto.</div>}
       {porFora.length > 0 && (
         <>
           <h2>Pedidos de pagamento por fora</h2>

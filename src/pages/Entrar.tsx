@@ -8,7 +8,7 @@ import { lerImagem } from '../components/ui';
 import { cadastrar, entrar, enviarDocumento } from '../store/acoes';
 import { useUsuario } from '../store/db';
 
-type Tela = 'inicio' | 'cadastro' | 'entrar' | 'menor';
+type Tela = 'inicio' | 'cadastro' | 'entrar' | 'menor' | 'senha';
 
 export function Entrar() {
   const [tela, setTela] = useState<Tela>('inicio');
@@ -72,8 +72,18 @@ export function Entrar() {
           <label className="campo">Senha<input id="e-senha" type="password" autoComplete="current-password" value={f.senha} onChange={campo('senha')} /></label>
           {erro && <p className="erro" role="alert">{erro}</p>}
           <button className="btn" disabled={enviando}>Entrar</button>
-          <button type="button" className="back" onClick={() => { setErro(''); setTela('cadastro'); }}>Criar conta</button>
+          <div className="row"><button type="button" className="back sp" style={{ textAlign: 'left' }} onClick={() => { setErro(''); setTela('cadastro'); }}>Criar conta</button>
+            <button type="button" className="back" onClick={() => { setErro(''); setTela('senha'); }}>Esqueci minha senha</button></div>
         </form>
+      )}
+
+      {tela === 'senha' && (
+        <div className="stack">
+          <h1>Esqueci minha senha</h1>
+          <p className="lead">Quando o servidor da Celus estiver ligado, você digita seu e-mail aqui e recebe um link para criar uma senha nova.</p>
+          <div className="alerta warn">No modo demonstração ainda não enviamos e-mail. Para testar de novo, crie uma conta com outro e-mail ou apague os dados de teste no Perfil.</div>
+          <button className="btn ghost" onClick={() => setTela('entrar')}>Voltar para entrar</button>
+        </div>
       )}
 
       {tela === 'menor' && (

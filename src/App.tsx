@@ -1,14 +1,29 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { AnuncioPage } from './pages/AnuncioPage';
-import { ChatPage } from './pages/ChatPage';
+import { lazy, type ComponentType } from 'react';
 import { Entrar, Verificar } from './pages/Entrar';
-import { FeedPage, PostarStory } from './pages/FeedPage';
-import { MapPage } from './pages/MapPage';
-import { CelusPage, EditarPerfil, PerfilPage } from './pages/PerfilPage';
-import { Anunciar, AgendaPage, Curadoria, EditarAnuncio, Painel, Portaria } from './pages/Renda';
-import { Notificacoes } from './pages/Notificacoes';
-import { ReservaPage, UsoPage } from './pages/ReservaPage';
+
+// Cada tela é baixada só quando a pessoa abre: a entrada no app fica leve e o mapa vem depois.
+const sob = <M extends Record<string, ComponentType>>(f: () => Promise<M>, nome: keyof M) => lazy(() => f().then((m) => ({ default: m[nome] })));
+const AnuncioPage = sob(() => import('./pages/AnuncioPage'), 'AnuncioPage');
+const ChatPage = sob(() => import('./pages/ChatPage'), 'ChatPage');
+const FeedPage = sob(() => import('./pages/FeedPage'), 'FeedPage');
+const PostarStory = sob(() => import('./pages/FeedPage'), 'PostarStory');
+const MapPage = sob(() => import('./pages/MapPage'), 'MapPage');
+const PerfilPage = sob(() => import('./pages/PerfilPage'), 'PerfilPage');
+const CelusPage = sob(() => import('./pages/PerfilPage'), 'CelusPage');
+const EditarPerfil = sob(() => import('./pages/PerfilPage'), 'EditarPerfil');
+const ExcluirConta = sob(() => import('./pages/PerfilPage'), 'ExcluirConta');
+const Painel = sob(() => import('./pages/Renda'), 'Painel');
+const Anunciar = sob(() => import('./pages/Renda'), 'Anunciar');
+const AgendaPage = sob(() => import('./pages/Renda'), 'AgendaPage');
+const Curadoria = sob(() => import('./pages/Renda'), 'Curadoria');
+const EditarAnuncio = sob(() => import('./pages/Renda'), 'EditarAnuncio');
+const Portaria = sob(() => import('./pages/Renda'), 'Portaria');
+const Recebimento = sob(() => import('./pages/Renda'), 'Recebimento');
+const Notificacoes = sob(() => import('./pages/Notificacoes'), 'Notificacoes');
+const ReservaPage = sob(() => import('./pages/ReservaPage'), 'ReservaPage');
+const UsoPage = sob(() => import('./pages/ReservaPage'), 'UsoPage');
 import { useUsuario } from './store/db';
 
 function SoDeslogado({ children }: { children: React.ReactNode }) {
@@ -31,6 +46,8 @@ export default function App() {
           <Route path="chat" element={<ChatPage />} />
           <Route path="perfil" element={<PerfilPage />} />
           <Route path="perfil/editar" element={<EditarPerfil />} />
+          <Route path="perfil/excluir" element={<ExcluirConta />} />
+          <Route path="renda/recebimento" element={<Recebimento />} />
           <Route path="celus" element={<CelusPage />} />
           <Route path="notificacoes" element={<Notificacoes />} />
           <Route path="renda" element={<Painel />} />

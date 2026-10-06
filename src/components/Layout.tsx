@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { avisosDeEventos, concluirEventosPassados } from '../store/acoes';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDB, useUsuario } from '../store/db';
@@ -75,7 +75,7 @@ export function Layout() {
             <button aria-pressed={renda} onClick={() => nav('/renda')}>Rentabilizar</button>
           </div>
         </header>
-        <main className={loc.pathname === '/' ? 'cheio' : ''}><Outlet /></main>
+        <main className={loc.pathname === '/' ? 'cheio' : ''}><Suspense fallback={<div className="carregando" aria-label="Carregando" />}><Outlet /></Suspense></main>
         {mostrarEmUso && <div className="live-wrap"><EmUso /></div>}
         <nav className="tabs" style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }} aria-label="Navegação">
           {abas.map((a) => (

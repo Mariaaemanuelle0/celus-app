@@ -6,7 +6,7 @@ import { Visualizador } from '../components/Stories';
 import { Miniatura, Moeda, Voltar, lerImagem, toast } from '../components/ui';
 import { brl } from '../lib/format';
 import { idade } from '../lib/regras';
-import { alternarAlbum, alternarEquipe, atualizarPerfil, resgatar, resgatarAnfitriao, sair, storiesVisiveis } from '../store/acoes';
+import { alternarAlbum, alternarEquipe, atualizarPerfil, excluirConta, resgatar, resgatarAnfitriao, sair, storiesVisiveis } from '../store/acoes';
 import { apagarTudo, carteiraDe, useDB, useUsuario } from '../store/db';
 import { GANHOS } from '../lib/regras';
 
@@ -103,6 +103,7 @@ export function PerfilPage() {
       </div>
       <div className="stack" style={{ marginTop: 12 }}>
         <button className="btn ghost" onClick={() => { sair(); nav('/entrar'); }}>Sair da conta</button>
+        <Link to="/perfil/excluir" className="back" style={{ textDecoration: 'none' }}>Excluir minha conta</Link>
         {!confirmaApagar ? <button className="back" onClick={() => setConfirmaApagar(true)}>Apagar todos os dados de teste deste aparelho</button>
           : <div className="alerta bad">Isso apaga contas, reservas e anúncios de teste deste aparelho. <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => { apagarTudo(); nav('/entrar'); }}>Apagar</button><button className="btn sm ghost" onClick={() => setConfirmaApagar(false)}>Cancelar</button></div></div>}
       </div>
@@ -177,6 +178,29 @@ export function EditarPerfil() {
       </div>
       <label className="campo" style={{ marginTop: 18 }}>Bio<textarea id="p-bio" rows={3} maxLength={160} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Ex.: Designer, moro no Centro, uso a Celus entre reuniões." /><span className="hint">{bio.length}/160</span></label>
       <button className="btn" style={{ marginTop: 16 }} disabled={!foto} onClick={() => { atualizarPerfil({ foto, bio }); toast('Perfil atualizado'); nav('/perfil'); }}>Salvar</button>
+    </>
+  );
+}
+
+export function ExcluirConta() {
+  const nav = useNavigate();
+  const [senha, setSenha] = useState('');
+  const [conf, setConf] = useState('');
+  const [erro, setErro] = useState('');
+  return (
+    <>
+      <Voltar para="/perfil" />
+      <h1>Excluir minha conta</h1>
+      <p className="lead">Isso não pode ser desfeito.</p>
+      <div className="box infos" style={{ marginTop: 0 }}>
+        <div className="sumline"><span>Apagamos</span><span>Perfil, foto, bio, celus, sonhos, stories, mensagens e notificações</span></div>
+        <div className="sumline"><span>Pausamos</span><span>Seus anúncios, que saem do mapa</span></div>
+        <div className="sumline"><span>Guardamos sem seu nome</span><span>Registros de pagamento e avaliações, pelo prazo que a lei exige</span></div>
+      </div>
+      <label className="campo" style={{ marginTop: 18 }}>Sua senha<input id="x-senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="current-password" /></label>
+      <label className="campo" style={{ marginTop: 12 }}>Para confirmar, digite EXCLUIR<input id="x-conf" value={conf} onChange={(e) => setConf(e.target.value.toUpperCase())} /></label>
+      {erro && <p className="erro" style={{ marginTop: 10 }}>{erro}</p>}
+      <button className="btn" style={{ marginTop: 16, background: 'var(--bad)' }} disabled={conf !== 'EXCLUIR' || !senha} onClick={async () => { const r = await excluirConta(senha); if (r.ok) { toast('Conta excluída'); nav('/entrar'); } else setErro(r.erro); }}>Excluir conta</button>
     </>
   );
 }
