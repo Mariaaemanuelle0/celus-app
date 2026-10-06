@@ -54,10 +54,14 @@ export async function entrar(email: string, senha: string): Promise<Resultado> {
 export const sair = () => mudar((d) => { d.sessao = null; });
 
 /** Modo demonstração: o documento é "analisado" na hora. No app real, vai para um serviço de verificação. */
-export function enviarDocumento() {
+export function enviarDocumento(selfie?: string) {
   const id = sessao(); if (!id) return;
-  mudar((d) => { d.usuarios[id].verificacao = 'verificado'; });
+  mudar((d) => { d.usuarios[id].verificacao = 'verificado'; if (selfie) d.usuarios[id].foto = selfie; });
 }
+
+/** Foto de perfil é sempre o rosto da pessoa: sem ela não dá para reservar, chamar profissional ou anunciar. */
+const SEM_FOTO = 'Coloque uma foto do seu rosto no perfil. Quem recebe você precisa saber que é você.';
+const semFoto = () => { const id = sessao(); return !id || !ler().usuarios[id]?.foto; };
 
 export const alternarEquipe = () => { const id = sessao(); if (id) mudar((d) => { d.usuarios[id].equipeCelus = !d.usuarios[id].equipeCelus; }); };
 export const alternarAlbum = () => { const id = sessao(); if (id) mudar((d) => { d.usuarios[id].albumPublico = !d.usuarios[id].albumPublico; }); };
@@ -101,6 +105,7 @@ const AGUARDANDO_CONFERENCIA = 'Este espaço está aguardando a conferência do 
 
 export function reservarHora(a: Anuncio, pacote: Pacote, pessoas: number, extras: Extra[], inicio: number, pagamento: Pagamento = 'pix'): { ok: true; id: string } | { ok: false; erro: string } {
   const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (semFoto()) return { ok: false, erro: SEM_FOTO };
   if (bloqueadoPorConferencia(a)) return { ok: false, erro: AGUARDANDO_CONFERENCIA };
   if (a.categoria === 'ficar' && ler().usuarios[uid]?.verificacao !== 'verificado') return { ok: false, erro: 'Para reservar no Ficar, verifique sua identidade primeiro.' };
   const fim = inicio + pacote.horas * 3600_000;
@@ -119,6 +124,7 @@ export function reservarHora(a: Anuncio, pacote: Pacote, pessoas: number, extras
 
 export function reservarDiaria(a: Anuncio, checkin: number, noites: number, pessoas: number, extras: Extra[], pagamento: Pagamento = 'pix'): { ok: true; id: string } | { ok: false; erro: string } {
   const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (semFoto()) return { ok: false, erro: SEM_FOTO };
   if (bloqueadoPorConferencia(a)) return { ok: false, erro: AGUARDANDO_CONFERENCIA };
   if (a.categoria === 'ficar' && ler().usuarios[uid]?.verificacao !== 'verificado') return { ok: false, erro: 'Para reservar no Ficar, verifique sua identidade primeiro.' };
   const fim = checkin + noites * 86_400_000;
@@ -136,14 +142,15 @@ export function reservarDiaria(a: Anuncio, checkin: number, noites: number, pess
   return { ok: true, id };
 }
 
-export function chamarProfissional(a: Anuncio, horas: number, pagamento: Pagamento = 'pix'): { ok: true; id: string } | { ok: false; erro: string } {
+export function chamarProfissional(a: Anuncio, horas: number, pagamento: Pagamento = 'pix', destino?: Ponto | null): { ok: true; id: string } | { ok: false; erro: string } {
   const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (semFoto()) return { ok: false, erro: SEM_FOTO };
   if (!jornada(a).disponivel) return { ok: false, erro: 'Este profissional não está disponível agora.' };
   if (ler().reservas.some((r) => r.anuncioId === a.id && ['solicitado', 'aceito', 'a_caminho'].includes(r.status))) return { ok: false, erro: 'Este profissional já está atendendo um chamado. Tente outro ou aguarde.' };
   const id = novoId();
   const subtotal = (a.preco ?? 0) * horas;
   mudar((d) => {
-    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'servico', status: 'solicitado', inicio: Date.now(), horasServico: horas, pessoas: 1, extras: [], extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: TAXA_SERVICO, multa: 0, total: subtotal + TAXA_SERVICO, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now(), comissao: comissaoAtual(d, a), pagamento });
+    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'servico', status: 'solicitado', inicio: Date.now(), horasServico: horas, pessoas: 1, extras: [], extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: TAXA_SERVICO, multa: 0, total: subtotal + TAXA_SERVICO, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now(), comissao: comissaoAtual(d, a), pagamento, destino: destino ?? undefined });
     d.usuarios[uid].ultimoPagamento = pagamento;
     notificar(d, a.donoId, `Novo chamado de ${d.usuarios[uid]?.nome.split(' ')[0] ?? 'cliente'}: ${brlTxt(subtotal)}. Aceite ou recuse.`, '/renda');
   });
@@ -445,7 +452,7 @@ export function criarBeneficio(anuncioId: string, nome: string, custo: number) {
 
 /* ---------- Anúncios (Rentabilizar) ---------- */
 export function criarAnuncio(a: Omit<Anuncio, 'id' | 'donoId' | 'status' | 'notaQualidade' | 'notaCustoBeneficio' | 'totalAvaliacoes' | 'totalSonhos' | 'criadoEm'>): string | null {
-  const uid = sessao(); if (!uid) return null;
+  const uid = sessao(); if (!uid || semFoto()) return null;
   const id = novoId();
   mudar((d) => { d.anuncios.push({ ...a, id, donoId: uid, status: 'pendente', notaQualidade: 5, notaCustoBeneficio: 5, totalAvaliacoes: 0, totalSonhos: 0, criadoEm: Date.now() }); });
   return id;
@@ -512,6 +519,7 @@ export function criarAnuncioAssistido(a: Parameters<typeof criarAnuncio>[0], anf
 /** O anfitrião confere o cadastro feito pela equipe, aceita as regras e passa a ser o dono. Já entra no mapa (a equipe esteve no local). */
 export function assumirAnuncio(codigoOuId: string): Resultado {
   const d0 = ler(); const uid = d0.sessao; if (!uid) return falha('Entre na sua conta.');
+  if (semFoto()) return falha(SEM_FOTO);
   const alvo = codigoOuId.trim().toUpperCase();
   const a = d0.anuncios.find((x) => x.status === 'convite' && (x.convite?.codigo === alvo || x.id === codigoOuId));
   if (!a || !a.convite) return falha('Código não encontrado. Confira com quem fez o cadastro.');

@@ -100,10 +100,10 @@ export function Verificar() {
       <div className="entrada-topo"><Marca /><span>Celus</span></div>
       <div className="stack">
                 <h1>Confirme sua identidade</h1>
-        <p className="lead">É o que garante que todo mundo no Celus é real e maior de idade. Libera o chat, os stories e as categorias de estadia.</p>
+        <p className="lead">É o que garante que todo mundo na Celus é real e maior de idade. A selfie vira sua foto de perfil: quem recebe você confere que é você. Libera reservas, chat, stories e o Ficar.</p>
         <label className="upload">{doc ? <img src={doc} alt="Documento enviado" /> : <span>Foto do documento (RG ou CNH)</span>}<input id="v-doc" type="file" accept="image/*" capture="environment" onChange={ler(setDoc)} /></label>
-        <label className="upload">{selfie ? <img src={selfie} alt="Selfie enviada" /> : <span>Selfie segurando o documento</span>}<input id="v-selfie" type="file" accept="image/*" capture="user" onChange={ler(setSelfie)} /></label>
-        <button className="btn" disabled={!doc || !selfie} onClick={() => { enviarDocumento(); nav('/'); }}>Enviar para verificação</button>
+        <label className="upload">{selfie ? <img src={selfie} alt="Selfie enviada" /> : <span>Selfie do seu rosto<br /><small className="hint">Vira sua foto de perfil. Sem óculos escuros, boné ou filtro.</small></span>}<input id="v-selfie" type="file" accept="image/*" capture="user" onChange={ler(setSelfie)} /></label>
+        <button className="btn" disabled={!doc || !selfie} onClick={() => { enviarDocumento(selfie ?? undefined); nav('/'); }}>Enviar para verificação</button>
         <button className="btn ghost" onClick={() => nav('/')}>Fazer depois</button>
         <p className="hint">No modo demonstração a verificação é aprovada na hora e as fotos não saem do aparelho. No app real, um serviço especializado confere documento e rosto.</p>
       </div>

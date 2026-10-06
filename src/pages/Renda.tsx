@@ -5,6 +5,7 @@ import type { Agenda, Anuncio, Categoria, Extra, Pacote } from '../data/types';
 import { agendaPadrao } from '../data/seed';
 import { Estrelas, IconeCategoria, Miniatura, Voltar, lerImagem, toast, useAgora, useLocalizacao } from '../components/ui';
 import { emDestaque } from '../data/useAnuncios';
+import { ComoChegar } from '../components/Rota';
 import { brl, rotuloPreco, virgula } from '../lib/format';
 import { centroPiloto } from '../lib/geo';
 import {
@@ -93,14 +94,15 @@ export function Painel() {
             const cliente = usuarios[r.userId];
             return (
               <div key={r.id} className="box chamado">
-                <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp">{cliente?.nome.split(' ')[0] ?? 'Cliente'}</b><span className="preco">{brl(parteAnfitriao(r))}</span></div>
+                <div className="row" style={{ flexWrap: 'nowrap', gap: 10 }}><span className="avatar mini">{cliente?.foto ? <img src={cliente.foto} alt={`Foto de ${cliente.nome}`} /> : cliente?.nome.slice(0, 1)}</span><b className="sp">{cliente?.nome.split(' ')[0] ?? 'Cliente'}</b><span className="preco">{brl(parteAnfitriao(r))}</span></div>
                 <div className="meta">{r.horasServico && anuncioDe(r.anuncioId)?.unidadePreco === '/h' ? `${r.horasServico} h de serviço. ` : ''}Pedido às {new Date(r.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}. Você recebe o valor já com a comissão descontada.</div>
                 <div className="row" style={{ marginTop: 10 }}>
                   {r.status === 'solicitado' && <><button className="btn sm" onClick={() => { avancarChamado(r.id, 'aceito'); toast('Chamado aceito'); }}>Aceitar</button><button className="btn sm ghost" onClick={() => { avancarChamado(r.id, 'recusado'); toast('Chamado recusado. O cliente não paga nada'); }}>Recusar</button></>}
                   {r.status === 'aceito' && <button className="btn sm" onClick={() => avancarChamado(r.id, 'a_caminho')}>Estou a caminho</button>}
                   {r.status === 'em_andamento' && <button className="btn sm" onClick={() => { avancarChamado(r.id, 'concluida'); toast('Serviço concluído'); }}>Concluí o serviço</button>}
                 </div>
-                {r.status === 'a_caminho' && <ConferirCodigo reservaId={r.id} rotulo="Chegou? Peça o código ao cliente para começar" />}
+                {['aceito', 'a_caminho'].includes(r.status) && r.destino && <ComoChegar lat={r.destino.lat} lng={r.destino.lng} rotulo="Ir até o cliente" />}
+                {r.status === 'a_caminho' && <ConferirCodigo reservaId={r.id} rotulo="Chegou? Confira se é o rosto da foto e peça o código" />}
               </div>
             );
           })}</div>
@@ -155,13 +157,13 @@ export function Painel() {
         const rep = repasse(r);
         return (
           <div key={r.id} className="box" style={{ padding: 14 }}>
-            <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp">{usuarios[r.userId]?.nome ?? 'Hóspede'}</b><span className="preco">{r.status === 'cancelada' || r.status === 'recusado' ? '–' : brl(parteAnfitriao(r))}</span></div>
+            <div className="row" style={{ flexWrap: 'nowrap', gap: 10 }}><span className="avatar mini">{usuarios[r.userId]?.foto ? <img src={usuarios[r.userId].foto} alt={`Foto de ${usuarios[r.userId].nome}`} /> : (usuarios[r.userId]?.nome ?? 'H').slice(0, 1)}</span><b className="sp">{usuarios[r.userId]?.nome ?? 'Hóspede'}</b><span className="preco">{r.status === 'cancelada' || r.status === 'recusado' ? '–' : brl(parteAnfitriao(r))}</span></div>
             <div className="meta">{a.titulo}, {dataHoraCurta(r.inicio)}</div>
             <div className="hint" style={{ marginTop: 2 }}>
               {r.status === 'cancelada' ? 'Cancelada pelo cliente' : r.status === 'recusado' ? 'Chamado recusado' : `${ESTADO_REPASSE[rep.estado]}${rep.estado === 'agendado' && rep.quando ? ` ${dataCurta(rep.quando)}` : ''}`}
               {r.comissao && r.comissao < COMISSAO ? `. Comissão de ${Math.round(r.comissao * 100)}%` : ''}
             </div>
-            {r.status === 'confirmada' && a.tipoAcesso !== 'fechadura' && !r.chegadaConfirmada && <ConferirCodigo reservaId={r.id} rotulo="Quando a pessoa chegar, peça o código e confira aqui" />}
+            {r.status === 'confirmada' && a.tipoAcesso !== 'fechadura' && !r.chegadaConfirmada && <ConferirCodigo reservaId={r.id} rotulo="Quando a pessoa chegar, confira se é o rosto da foto e peça o código" />}
             {r.status === 'confirmada' && r.chegadaConfirmada && <div className="hint" style={{ color: 'var(--ok)' }}>Chegada confirmada pelo código.</div>}
             {r.status === 'concluida' && !r.avaliadaPeloAnfitriao && (
               <div style={{ marginTop: 8 }}><div className="hint">Avalie {a.categoria === 'servicos' ? 'o cliente' : 'o hóspede'} (só estrelas):</div><Estrelas valor={0} onChange={(n) => { avaliarHospede(r.id, n); toast('Avaliação enviada'); }} rotulo="Nota do cliente" /></div>
@@ -327,6 +329,7 @@ export function Anunciar() {
   const [erroAnf, setErroAnf] = useState('');
   return (
     <>
+      {!u.foto && <Link to="/perfil/editar" className="alerta warn" style={{ display: 'block', marginBottom: 16, color: 'var(--text)', textDecoration: 'none' }}><b>Falta a foto do seu rosto.</b> Quem anuncia também aparece com foto. Tire uma selfie no perfil antes de enviar.</Link>}
       {u.equipeCelus && (
         <div className="box assistido">
           <label className="check"><input type="checkbox" checked={assistido} onChange={(e) => setAssistido(e.target.checked)} /><span><b>Cadastro assistido</b><br /><span className="hint">Estou no local cadastrando para um anfitrião. Ele recebe um código e assume o anúncio.</span></span></label>
@@ -352,7 +355,7 @@ export function Anunciar() {
             toast(`Código ${r.codigo} gerado. Envie ao anfitrião`); nav('/renda'); return;
           }
           const id = criarAnuncio(dados);
-          if (id) { toast('Enviado para a curadoria'); nav('/renda'); }
+          if (id) { toast('Enviado para a curadoria'); nav('/renda'); } else toast('Tire uma selfie no perfil antes de anunciar');
         }} />
     </>
   );

@@ -43,6 +43,7 @@ export function AnuncioPage() {
   const [erro, setErro] = useState('');
   const [pagando, setPagando] = useState(false);
   const verificado = useDB((d) => d.usuarios[d.sessao ?? '']?.verificacao === 'verificado');
+  const temFoto = useDB((d) => !!d.usuarios[d.sessao ?? '']?.foto);
   const [modoFicar, setModoFicar] = useState<'horas' | 'diarias'>('horas');
   const dono = useDB((d) => (a ? d.usuarios[a.donoId] : undefined));
   const anunciosDoDono = useDB((d) => d.anuncios);
@@ -76,6 +77,7 @@ export function AnuncioPage() {
       if (!inicio || Number.isNaN(inicio)) return setErro('Escolha a data e a hora.');
       if (inicio < Date.now() - 5 * 60_000) return setErro('Escolha um horário a partir de agora.');
     }
+    if (!temFoto) return setErro('Coloque uma foto do seu rosto no perfil antes de reservar. Quem recebe você precisa saber que é você.');
     if (bloqueadoPorConferencia(a!)) return setErro('Este espaço está aguardando a conferência do anfitrião. Tente de novo mais tarde.');
     setPagando(true);
   }
@@ -90,7 +92,7 @@ export function AnuncioPage() {
       const [y, m, d] = checkinData.split('-').map(Number);
       r = reservarDiaria(a!, new Date(y, m - 1, d, 14, 0).getTime(), noites, pessoas, extras, metodo);
     } else if (a!.categoria === 'servicos') {
-      r = chamarProfissional(a!, a!.unidadePreco === '/h' ? horas : 1, metodo);
+      r = chamarProfissional(a!, a!.unidadePreco === '/h' ? horas : 1, metodo, onde);
     }
     if (!r) return;
     if (!r.ok) return setErro(r.erro);
@@ -279,6 +281,7 @@ export function AnuncioPage() {
         </>
       )}
 
+      {!temFoto && a.donoId !== uid && <Link to="/perfil/editar" className="alerta warn" style={{ display: 'block', marginTop: 14, color: 'var(--text)', textDecoration: 'none' }}><b>Falta a foto do seu rosto.</b> Tire uma selfie no perfil para reservar.</Link>}
       {a.categoria === 'ficar' && !verificado && <Link to="/verificar" className="alerta warn" style={{ display: 'block', marginTop: 14, color: 'var(--text)', textDecoration: 'none' }}><b>Verifique sua identidade</b> para reservar no Ficar. Leva um minuto.</Link>}
       {erro && <p className="erro" role="alert" style={{ marginTop: 12 }}>{erro}</p>}
       {(tp === 'pacote' || servico || tp === 'diaria') && <p className="hint" style={{ marginTop: 10 }}>Pagamento em modo de teste: nenhuma cobrança real é feita.</p>}

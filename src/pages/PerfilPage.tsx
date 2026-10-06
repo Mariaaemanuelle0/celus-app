@@ -44,8 +44,9 @@ export function PerfilPage() {
         </div>
       </div>
       {u.bio ? <p className="desc" style={{ margin: '12px 0 0' }}>{u.bio}</p> : null}
-      <Link to="/perfil/editar" className="btn sm ghost" style={{ marginTop: 12 }}>{u.foto || u.bio ? 'Editar perfil' : 'Adicionar foto e bio'}</Link>
+      <Link to="/perfil/editar" className="btn sm ghost" style={{ marginTop: 12 }}>{u.foto ? 'Editar perfil' : 'Tirar selfie para o perfil'}</Link>
       {verStories && <Visualizador lista={meusStories} fechar={() => setVerStories(false)} />}
+      {!u.foto && <Link to="/perfil/editar" className="alerta warn" style={{ display: 'block', marginTop: 14, textDecoration: 'none', color: 'var(--text)' }}><b>Falta a foto do seu rosto.</b> Sem ela não dá para reservar, chamar profissional nem anunciar.</Link>}
       {u.verificacao !== 'verificado' && <Link to="/verificar" className="alerta warn" style={{ display: 'block', marginTop: 14, textDecoration: 'none', color: 'var(--text)' }}><b>Verifique sua identidade</b> para liberar chat, stories e estadias.</Link>}
 
       <Link to="/celus" className="walletmini">
@@ -166,16 +167,16 @@ export function EditarPerfil() {
     <>
       <Voltar para="/perfil" />
       <h1>Seu perfil</h1>
-      <p className="lead">Quem anuncia e quem chama um profissional vê sua foto e sua bio. Use uma foto do seu rosto: ajuda na hora da chegada.</p>
+      <p className="lead">Na Celus a foto do perfil é sempre o seu rosto. É ela que quem recebe você usa para saber que é você na chegada, junto com o código.</p>
       <div className="row" style={{ gap: 16, flexWrap: 'nowrap' }}>
         <span className="avatar grande">{foto ? <img src={foto} alt="Sua foto" /> : u.nome.slice(0, 1)}</span>
         <div className="stack" style={{ gap: 8 }}>
-          <label className="btn sm ghost">{foto ? 'Trocar foto' : 'Escolher foto'}<input id="p-foto" type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) setFoto(await lerImagem(f, 480)); }} /></label>
-          {foto && <button className="back" style={{ margin: 0 }} onClick={() => setFoto('')}>Remover foto</button>}
+          <label className="btn sm ghost">{foto ? 'Tirar nova selfie' : 'Tirar selfie'}<input id="p-foto" type="file" accept="image/*" capture="user" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) setFoto(await lerImagem(f, 480)); }} /></label>
+          <span className="hint">Rosto de frente, sem óculos escuros, boné ou filtro. Logos, paisagens e fotos de outras pessoas não são aceitos.</span>
         </div>
       </div>
       <label className="campo" style={{ marginTop: 18 }}>Bio<textarea id="p-bio" rows={3} maxLength={160} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Ex.: Designer, moro no Centro, uso a Celus entre reuniões." /><span className="hint">{bio.length}/160</span></label>
-      <button className="btn" style={{ marginTop: 16 }} onClick={() => { atualizarPerfil({ foto: foto ?? '', bio }); toast('Perfil atualizado'); nav('/perfil'); }}>Salvar</button>
+      <button className="btn" style={{ marginTop: 16 }} disabled={!foto} onClick={() => { atualizarPerfil({ foto, bio }); toast('Perfil atualizado'); nav('/perfil'); }}>Salvar</button>
     </>
   );
 }

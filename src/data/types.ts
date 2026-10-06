@@ -115,6 +115,8 @@ export type Reserva = {
   codigoTravado?: boolean;
   /** Cliente relatou pedido de pagamento por fora (dinheiro, maquininha, Pix direto). */
   pagamentoPorFora?: number;
+  /** Chamado de serviço: onde o cliente está (o profissional vai até lá). */
+  destino?: { lat: number; lng: number };
 };
 
 export type Notificacao = { id: string; userId: string; t: number; txt: string; link?: string; lida: boolean };

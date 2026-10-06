@@ -410,3 +410,6 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 /* Cadastro assistido */
 .assistido { padding: 14px; margin-bottom: 18px; border-color: rgba(76,141,255,.4); }
 .convite { padding: 16px; border-radius: var(--r); border: 1px solid rgba(76,141,255,.45); background: radial-gradient(120% 120% at 100% 0%, rgba(76,141,255,.18), transparent 60%), var(--surface); }
+
+.rota { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.rota .hint { flex: 1; }

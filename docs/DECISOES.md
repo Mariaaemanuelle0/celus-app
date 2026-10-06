@@ -37,6 +37,12 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Comodidades típicas: banheiro, chuveiro, churrasqueira, sombra, ponto de luz, aceita pet. Extras como aluguel de barraca e lenha.
 - Atenção do anfitrião: regras do condomínio e da prefeitura sobre camping e hospedagem.
 
+## Foto de perfil é o rosto
+- A foto do perfil é sempre o rosto da pessoa: a selfie da verificação vira a foto do perfil, e trocar exige nova selfie pela câmera.
+- Sem foto de rosto não dá para reservar, chamar profissional, anunciar nem assumir anúncio.
+- Quem recebe vê a foto de quem vai chegar e confere rosto + código.
+- No app real, o serviço de verificação compara a selfie com o documento (prova de vida) e a troca de foto passa pela mesma checagem.
+
 ## Código de chegada (como o da Uber)
 - Toda reserva e todo chamado têm um código de 4 dígitos que só quem reservou vê.
 - Espaço com alguém no local (presencial, responsável, portaria): quem recebe digita o código no app e só então o tempo começa.
@@ -108,6 +114,7 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Regras de cancelamento e reembolso (hora e serviço; diária 48 h / 50%).
 - Timer: tolerância, cobrança por minuto e teto de 2x a hora.
 - Código de chegada obrigatório; trava após 5 tentativas erradas.
+- Foto de perfil obrigatória e sempre do próprio rosto; uso de foto de terceiros leva a bloqueio.
 - Catraca livre: conferência do espaço depois de 5 locações seguidas sem supervisão.
 - Profissionais como freelancers, sem vínculo; jornada máxima de 12 h e pausa de 6 h.
 - Nenhum espaço pode deixar duas pessoas desconhecidas sozinhas num ambiente íntimo fechado.

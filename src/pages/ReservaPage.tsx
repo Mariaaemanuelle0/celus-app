@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { CATEGORIAS } from '../data/catalogo';
+import { ComoChegar } from '../components/Rota';
 import { Estrelas, Voltar, toast, useAgora } from '../components/ui';
 import { brl, rotuloHoras } from '../lib/format';
 import { AVISO_MIN, CARENCIA_MIN, cobranca, reembolso } from '../lib/regras';
@@ -72,6 +73,7 @@ export function ReservaPage() {
         </div>
       )}
 
+      {r.tipo !== 'servico' && ['confirmada', 'em_uso'].includes(r.status) && <ComoChegar lat={a.lat} lng={a.lng} />}
       <div className="box resumo">
         <div className="sumline"><span>Valor</span><span>{brl(r.subtotal)}</span></div>
         {r.taxaUsuario > 0 && <div className="sumline"><span>Taxa de serviço</span><span>{brl(r.taxaUsuario)}</span></div>}
