@@ -12,7 +12,7 @@ import {
   COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, TAXA_INGRESSO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
 } from '../lib/regras';
 import {
-  alternarDisponivel, arquivarPorFora, cancelarEvento, validarIngresso, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
+  alternarDisponivel, arquivarPorFora, avisarInteressados, cancelarEvento, numerosEvento, validarIngresso, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
   denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
 } from '../store/acoes';
 import { useDB, useUsuario } from '../store/db';
@@ -140,9 +140,10 @@ export function Painel() {
           ) : precisaSupervisao(a) && (a.semSupervisao ?? 0) > 0 ? (
             <p className="hint" style={{ margin: '8px 0 0' }}>{a.semSupervisao} de {LIMITE_SEM_SUPERVISAO} locações sem conferência.</p>
           ) : null}
+          {a.tipoPreco === 'ingresso' && a.lotes && a.evento && <Engajamento a={a} />}
           {a.tipoPreco === 'ingresso' && a.lotes && a.evento && (
             <div className="vendas">
-              <div className="hint">{a.evento.cancelado ? 'Evento cancelado' : `${dataEvento(a.evento.inicio)}`}</div>
+              <div className="hint">{a.evento.cancelado ? 'Evento cancelado' : a.evento.vendasAbrem && Date.now() < a.evento.vendasAbrem ? `Em divulgação. Vendas abrem ${dataEvento(a.evento.vendasAbrem)}` : `${dataEvento(a.evento.inicio)}`}</div>
               {a.lotes.map((l) => (
                 <div key={l.id} className="vendas-linha"><span className="sp">{l.nome}</span><span className="num">{l.vendidos}/{l.qtd}</span><i style={{ width: `${Math.min(100, (l.vendidos / l.qtd) * 100)}%` }} /></div>
               ))}
@@ -297,13 +298,13 @@ type Rascunho = {
   cat: Categoria; sub: string; prof: string; titulo: string; bairro: string; descricao: string;
   pacotes: Pacote[]; horasFicar: boolean; preco: number; unidade: string; porPessoa: boolean; metragem: number; capacidade: number;
   comodidades: string[]; extras: Extra[]; acesso: NonNullable<Anuncio['tipoAcesso']>; responsavel: string; manual: string; limpeza: boolean; fotos: string[];
-  inicioEvento: string; duracaoH: number; lotes: Lote[];
+  inicioEvento: string; duracaoH: number; lotes: Lote[]; vendasAbrem: string;
 };
 const RASCUNHO: Rascunho = {
   cat: 'descanso', sub: 'rede', prof: '', titulo: '', bairro: '', descricao: '',
   pacotes: [{ horas: 1, preco: 10 }, { horas: 3, preco: 25 }, { horas: 6, preco: 45 }], horasFicar: true, preco: 100, unidade: '/h', porPessoa: false, metragem: 10, capacidade: 1,
   comodidades: [], extras: [], acesso: 'responsavel', responsavel: '', manual: '', limpeza: false, fotos: [],
-  inicioEvento: '', duracaoH: 5, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 100, vendidos: 0, meia: true }],
+  inicioEvento: '', duracaoH: 5, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 100, vendidos: 0, meia: true }], vendasAbrem: '',
 };
 const PACOTES_FICAR: Pacote[] = [{ horas: 3, preco: 40 }, { horas: 6, preco: 65 }, { horas: 12, preco: 90 }];
 const tipoPrecoDe = (c: Categoria, sub?: string): Anuncio['tipoPreco'] => (c === 'eventos' && sub === 'ingressos' ? 'ingresso' : c === 'ficar' ? 'diaria' : c === 'imoveis' ? 'valor' : c === 'servicos' ? 'servico' : 'pacote');
@@ -316,6 +317,7 @@ function deAnuncio(a: Anuncio): Rascunho {
     comodidades: a.comodidades, extras: a.extras, acesso: a.tipoAcesso ?? 'responsavel', responsavel: a.responsavelLocal ?? '', manual: a.manualBonsModos, limpeza: a.limpezaInclusa, fotos: a.fotos,
     inicioEvento: a.evento ? new Date(a.evento.inicio - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '',
     duracaoH: a.evento ? Math.round((a.evento.fim - a.evento.inicio) / 3600_000) : 5, lotes: a.lotes ?? RASCUNHO.lotes,
+    vendasAbrem: a.evento?.vendasAbrem ? new Date(a.evento.vendasAbrem - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '',
   };
 }
 
@@ -327,7 +329,7 @@ function paraDados(f: Rascunho) {
     return {
       categoria: f.cat, subcategoria: f.sub, titulo: f.titulo.trim(), descricao: f.descricao.trim(), bairro: f.bairro.trim(), tipoPreco: tipo,
       capacidade: lotes.reduce((s, l) => s + l.qtd, 0), comodidades: [], extras: [], manualBonsModos: f.manual.trim(), limpezaInclusa: false, fotos: f.fotos,
-      evento: { inicio, fim: inicio + f.duracaoH * 3600_000 }, lotes,
+      evento: { inicio, fim: inicio + f.duracaoH * 3600_000, vendasAbrem: f.vendasAbrem ? Date.parse(f.vendasAbrem) : undefined }, lotes,
     };
   }
   const servico = f.cat === 'servicos';
@@ -420,6 +422,7 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
       const ini = Date.parse(f.inicioEvento);
       if (!ini || ini < Date.now()) return setErro('Escolha a data e a hora do evento, a partir de agora.');
       if (!f.lotes.some((l) => l.nome.trim() && l.qtd > 0 && l.preco >= 0)) return setErro('Crie pelo menos um lote com quantidade.');
+      if (f.vendasAbrem && Date.parse(f.vendasAbrem) >= ini) return setErro('As vendas precisam abrir antes do evento.');
     } else {
       if (mostraPacotes && !f.pacotes.some((p) => p.preco > 0)) return setErro('Defina o preço de pelo menos um pacote.');
       if (tipo !== 'pacote' && !(f.preco > 0)) return setErro('Defina o preço.');
@@ -449,6 +452,8 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
               <label className="campo">Começa<input id="a-inicio" type="datetime-local" value={f.inicioEvento} onChange={(e) => set('inicioEvento', e.target.value)} /></label>
               <label className="campo">Duração (horas)<input id="a-duracao" type="number" min={1} max={48} value={f.duracaoH} onChange={(e) => set('duracaoH', Number(e.target.value))} /></label>
             </div>
+            <label className="campo">Vendas abrem (opcional)<input id="a-vendas" type="datetime-local" value={f.vendasAbrem} onChange={(e) => set('vendasAbrem', e.target.value)} />
+              <span className="hint">Publique antes para divulgar: as pessoas marcam interesse e recebem aviso quando abrir. Vazio = vendas abertas assim que aprovar.</span></label>
             <div><div className="flabel">Lotes de ingresso <span className="hint">o próximo lote abre quando o anterior esgota, ou venda os dois juntos</span></div>
               <div className="stack" style={{ gap: 10 }}>{f.lotes.map((l, i) => (
                 <div key={i} className="box" style={{ padding: 12 }}>
@@ -519,6 +524,31 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
         <button className="btn">{botao}</button>
       </div>
     </form>
+  );
+}
+
+/** Para o organizador: quantos vão, quantos têm interesse, quantos interessados compraram, e um aviso por dia para quem ainda não comprou. */
+function Engajamento({ a }: { a: Anuncio }) {
+  const reservas = useDB((d) => d.reservas);
+  const interesses = useDB((d) => d.interesses);
+  const [aberto, setAberto] = useState(false);
+  const [txt, setTxt] = useState('');
+  const n = numerosEvento({ reservas, interesses }, a);
+  const taxa = n.interessadosReais ? Math.round((n.convertidos / n.interessadosReais) * 100) : null;
+  return (
+    <div className="engaj">
+      <div className="engaj-nums">
+        <div><b className="num">{n.vao}</b><span>vão</span></div>
+        <div><b className="num">{n.interesse}</b><span>têm interesse</span></div>
+        <div><b className="num">{taxa == null ? '–' : `${taxa}%`}</b><span>dos interessados compraram</span></div>
+      </div>
+      {!aberto ? <button className="back" style={{ margin: '8px 0 0' }} onClick={() => setAberto(true)}>Avisar quem tem interesse</button> : (
+        <form onSubmit={(e) => { e.preventDefault(); const r = avisarInteressados(a.id, txt); toast(r.ok ? 'Aviso enviado' : r.erro); if (r.ok) { setTxt(''); setAberto(false); } }} style={{ marginTop: 8 }}>
+          <textarea rows={2} maxLength={140} placeholder="Ex.: o lote promocional acaba amanhã às 18h." value={txt} onChange={(e) => setTxt(e.target.value)} aria-label="Aviso para interessados" />
+          <div className="row" style={{ marginTop: 6 }}><span className="hint sp">Vai para quem marcou interesse e ainda não comprou. Um aviso por dia.</span><button className="btn sm">Enviar</button></div>
+        </form>
+      )}
+    </div>
   );
 }
 

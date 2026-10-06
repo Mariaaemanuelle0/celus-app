@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { concluirEventosPassados } from '../store/acoes';
+import { avisosDeEventos, concluirEventosPassados } from '../store/acoes';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDB, useUsuario } from '../store/db';
 import { cobranca } from '../lib/regras';
@@ -54,7 +54,7 @@ function Sino() {
 
 export function Layout() {
   const u = useUsuario();
-  useEffect(() => { concluirEventosPassados(); }, []);
+  useEffect(() => { concluirEventosPassados(); avisosDeEventos(); }, []);
   const loc = useLocation();
   // Cada tela nova começa do topo.
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);

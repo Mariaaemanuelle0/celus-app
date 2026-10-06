@@ -35,6 +35,9 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Meia-entrada: comprador declara que apresenta o documento; organizador confere na entrada.
 - Cancelamento pelo comprador: até 7 dias após a compra, com mais de 48 h para o evento. Evento cancelado pelo organizador: reembolso total, incluindo a taxa.
 - Eventos passados saem do mapa e as compras viram concluídas, liberando avaliação.
+- **Interesse e prévia de público:** o evento pode ser publicado antes de abrir as vendas (divulgação). As pessoas marcam "Tenho interesse"; quem compra passa a contar como "vai". O evento mostra "X vão" e "Y têm interesse".
+- Interessados que não compraram recebem aviso automático quando as vendas abrem e na véspera. O organizador pode mandar um aviso por dia (sem contato, link ou pagamento por fora).
+- O organizador vê quantos vão, quantos têm interesse e quantos interessados compraram.
 
 ## Mapa
 - Mapa vetorial (MapLibre) com estilo próprio da Celus, inclinação e prédios em 3D, dados do OpenStreetMap via OpenFreeMap (gratuito). Mapbox pode substituir depois só trocando a configuração.

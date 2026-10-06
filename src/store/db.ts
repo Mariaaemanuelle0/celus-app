@@ -25,6 +25,7 @@ export type DB = {
   beneficios: Beneficio[];
   denuncias: Denuncia[];
   notificacoes: Notificacao[];
+  interesses: { userId: string; anuncioId: string; t: number }[];
 };
 
 const CHAVE = 'celus-db-v1';
@@ -59,6 +60,7 @@ function inicial(): DB {
     ],
     denuncias: [],
     notificacoes: [],
+    interesses: [],
   };
 }
 
@@ -69,6 +71,7 @@ function carregar(): DB {
       const db = JSON.parse(raw) as DB;
       if (db.versao === 1) {
         db.notificacoes ??= [];
+        db.interesses ??= [];
         for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
         return db;
       }

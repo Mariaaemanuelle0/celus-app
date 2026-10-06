@@ -12,7 +12,7 @@ import { emDestaque } from '../data/useAnuncios';
 import type { Pagamento } from '../store/acoes';
 import { COR_CSS, leitura } from '../lib/semaforo';
 import {
-  alternarSonho, chamarProfissional, comprarIngressos, checkin, hhmm, podePostar, reservarDiaria, reservarHora, resgatar, storiesVisiveis,
+  alternarInteresse, alternarSonho, chamarProfissional, comprarIngressos, numerosEvento, checkin, hhmm, podePostar, reservarDiaria, reservarHora, resgatar, storiesVisiveis,
 } from '../store/acoes';
 import { carteiraDe, useDB } from '../store/db';
 
@@ -46,6 +46,8 @@ export function AnuncioPage() {
   const temFoto = useDB((d) => !!d.usuarios[d.sessao ?? '']?.foto);
   const [qtd, setQtd] = useState<Record<string, { inteira: number; meia: number }>>({});
   const [declaraMeia, setDeclaraMeia] = useState(false);
+  const interessesTodos = useDB((d) => d.interesses);
+  const reservasTodas = useDB((d) => d.reservas);
   const [modoFicar, setModoFicar] = useState<'horas' | 'diarias'>('horas');
   const dono = useDB((d) => (a ? d.usuarios[a.donoId] : undefined));
   const anunciosDoDono = useDB((d) => d.anuncios);
@@ -62,6 +64,11 @@ export function AnuncioPage() {
   const somaExtras = extras.reduce((s, e) => s + e.preco, 0);
   const pacote = a.pacotes?.[pacoteI];
   const hibrido = a.tipoPreco === 'diaria' && !!a.pacotes?.length;
+  const ev = a.evento;
+  const nums = ev ? numerosEvento({ reservas: reservasTodas, interesses: interessesTodos }, a) : null;
+  const tenhoInteresse = interessesTodos.some((x) => x.userId === uid && x.anuncioId === a.id);
+  const jaComprei = reservasTodas.some((r) => r.anuncioId === a.id && r.userId === uid && r.tipo === 'ingresso' && r.status !== 'cancelada');
+  const emDivulgacao = !!ev?.vendasAbrem && Date.now() < ev.vendasAbrem;
   const tp: Anuncio['tipoPreco'] = hibrido && modoFicar === 'horas' ? 'pacote' : a.tipoPreco;
   const taxa = tp === 'pacote' ? taxaUsuarioDe(a, 'hora') : 0;
   const pes = a.porPessoa ? pessoas : 1;
@@ -138,6 +145,19 @@ export function AnuncioPage() {
         <span className="catpill" style={{ ['--c' as string]: cat.cor }}><IconeCategoria c={a.categoria} tamanho={14} />{sub}</span>
         <h1>{a.titulo}</h1>
         {a.evento && <p className="data-evento">{dataEvento(a.evento.inicio)} até {new Date(a.evento.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+        {nums && (
+          <div className="hype">
+            <span><b className="num">{nums.vao}</b> vão</span>
+            <span><b className="num">{nums.interesse}</b> têm interesse</span>
+            {!jaComprei && (
+              <button className={`btn sm ${tenhoInteresse ? '' : 'ghost'}`} aria-pressed={tenhoInteresse} onClick={() => { const m = alternarInteresse(a.id); toast(m ? 'Interesse marcado. Avisamos quando abrir e na véspera' : 'Interesse removido'); }}>
+                {tenhoInteresse ? 'Interesse marcado' : 'Tenho interesse'}
+              </button>
+            )}
+            {jaComprei && <span className="status aprovado">Você vai</span>}
+          </div>
+        )}
+        {emDivulgacao && <div className="alerta warn" style={{ marginBottom: 12 }}><b>Vendas abrem {dataEvento(ev!.vendasAbrem!)}.</b> Marque interesse para ser avisado na hora e não perder o primeiro lote.</div>}
         <p className="meta" style={{ margin: '0 0 10px' }}>{a.bairro}{dist != null ? `, a ${formatarDistancia(dist)} de você` : ''}</p>
         <p className="desc">{a.descricao}</p>
         <div className="fatos">
@@ -223,8 +243,8 @@ export function AnuncioPage() {
             const esgotado = l.vendidos >= l.qtd;
             return (
               <div key={l.id} className={`box lote ${esgotado ? 'esgotado' : ''}`}>
-                <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp">{l.nome}</b>{esgotado ? <span className="status">Esgotado</span> : l.qtd - l.vendidos <= 20 ? <span className="status pendente">Últimos {l.qtd - l.vendidos}</span> : null}</div>
-                {!esgotado && <>
+                <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp">{l.nome}</b>{emDivulgacao && <span className="preco">{brl(l.preco)}</span>}{esgotado ? <span className="status">Esgotado</span> : l.qtd - l.vendidos <= 20 ? <span className="status pendente">Últimos {l.qtd - l.vendidos}</span> : null}</div>
+                {!esgotado && !emDivulgacao && <>
                   <div className="lote-linha"><span className="sp">Inteira <span className="preco">{brl(l.preco)}</span></span><Passo n={q.inteira} menos={() => mudar('inteira', -1)} mais={() => resta > 0 && nIngressos < MAX_INGRESSOS_COMPRA && mudar('inteira', 1)} rotulo={`Inteira ${l.nome}`} /></div>
                   {l.meia && <div className="lote-linha"><span className="sp">Meia-entrada <span className="preco">{brl(l.preco / 2)}</span></span><Passo n={q.meia} menos={() => mudar('meia', -1)} mais={() => resta > 0 && nIngressos < MAX_INGRESSOS_COMPRA && mudar('meia', 1)} rotulo={`Meia ${l.nome}`} /></div>}
                 </>}
@@ -333,7 +353,9 @@ export function AnuncioPage() {
       {a.donoId !== uid && (
         <div className="acao-fixa">
           {total != null && <div className="acao-total"><span className="hint">Total</span><b className="num">{brl(total)}</b></div>}
-          {a.tipoPreco === 'ingresso' && <button className="btn" onClick={abrirPagamento} disabled={!nIngressos}>{nIngressos ? 'Comprar ingressos' : 'Escolha os ingressos'}</button>}
+          {a.tipoPreco === 'ingresso' && (emDivulgacao
+            ? <button className="btn" aria-pressed={tenhoInteresse} onClick={() => { if (!tenhoInteresse) { alternarInteresse(a.id); toast('Interesse marcado. Avisamos quando abrir'); } }}>{tenhoInteresse ? 'Você será avisado' : 'Tenho interesse'}</button>
+            : <button className="btn" onClick={abrirPagamento} disabled={!nIngressos}>{nIngressos ? 'Comprar ingressos' : 'Escolha os ingressos'}</button>)}
           {(tp === 'pacote' || tp === 'diaria') && <button className="btn" onClick={abrirPagamento}>Confirmar e pagar</button>}
           {servico && (jornada(a).disponivel
             ? <button className="btn" onClick={abrirPagamento}>Chamar {a.titulo.split(',')[0]}</button>

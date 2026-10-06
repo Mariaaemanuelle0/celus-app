@@ -2,7 +2,7 @@ import type { Anuncio, Extra, Ingresso, Pacote, Reserva } from '../data/types';
 import { distanciaKm, type Ponto } from '../lib/geo';
 import {
   CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, MAX_INGRESSOS_COMPRA, TAXA_INGRESSO, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
-  bloqueadoPorConferencia, celulaSemaforo, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
+  bloqueadoPorConferencia, celulaSemaforo, pedePagamentoPorFora, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
 import { carteiraDe, ganhar, ler, mudar, notificar, novoId, type DB } from './db';
 
@@ -543,6 +543,7 @@ export function comprarIngressos(a: Anuncio, itens: ItemCompra[], pagamento: Pag
   if (semFoto()) return { ok: false, erro: SEM_FOTO };
   if (!a.evento || a.evento.cancelado) return { ok: false, erro: 'Este evento não está vendendo ingressos.' };
   if (Date.now() > a.evento.fim) return { ok: false, erro: 'Este evento já aconteceu.' };
+  if (a.evento.vendasAbrem && Date.now() < a.evento.vendasAbrem) return { ok: false, erro: 'As vendas ainda não abriram. Marque interesse para ser avisado.' };
   const total = itens.reduce((s, i) => s + i.inteira + i.meia, 0);
   if (!total) return { ok: false, erro: 'Escolha pelo menos um ingresso.' };
   if (total > MAX_INGRESSOS_COMPRA) return { ok: false, erro: `No máximo ${MAX_INGRESSOS_COMPRA} ingressos por compra.` };
@@ -604,4 +605,64 @@ export function concluirEventosPassados() {
   const agora = Date.now();
   if (!ler().reservas.some((r) => r.tipo === 'ingresso' && r.status === 'confirmada' && (r.fimEvento ?? 0) < agora)) return;
   mudar((d) => { for (const r of d.reservas) if (r.tipo === 'ingresso' && r.status === 'confirmada' && (r.fimEvento ?? 0) < agora) { r.status = 'concluida'; r.fim = r.fimEvento; } });
+}
+
+/* ---------- Interesse em eventos ---------- */
+/** Marca ou desmarca "Tenho interesse". Quem compra conta como "vai". */
+export function alternarInteresse(anuncioId: string): boolean {
+  const uid = sessao(); if (!uid) return false;
+  let marcado = false;
+  mudar((d) => {
+    const i = d.interesses.findIndex((x) => x.userId === uid && x.anuncioId === anuncioId);
+    if (i >= 0) d.interesses.splice(i, 1);
+    else { d.interesses.push({ userId: uid, anuncioId, t: Date.now() }); marcado = true; }
+  });
+  return marcado;
+}
+
+/** Quem já comprou ingresso para o evento (não cancelado). */
+export const compradoresDe = (d: { reservas: Reserva[] }, anuncioId: string) =>
+  new Set(d.reservas.filter((r) => r.anuncioId === anuncioId && r.tipo === 'ingresso' && r.status !== 'cancelada').map((r) => r.userId));
+
+/** Números do evento: quantos vão (ingressos), quantos têm interesse e quantos interessados já compraram. */
+export function numerosEvento(d: { reservas: Reserva[]; interesses: { userId: string; anuncioId: string }[] }, a: Anuncio) {
+  const compradores = compradoresDe(d, a.id);
+  const interessados = d.interesses.filter((x) => x.anuncioId === a.id);
+  const vao = (a.lotes ?? []).reduce((s, l) => s + l.vendidos, 0);
+  const convertidos = interessados.filter((x) => compradores.has(x.userId)).length;
+  return { vao, interesse: interessados.filter((x) => !compradores.has(x.userId)).length + (a.evento?.interesseBase ?? 0), interessadosReais: interessados.length, convertidos };
+}
+
+/** Avisos automáticos para quem marcou interesse e ainda não comprou: abertura das vendas e véspera do evento. */
+export function avisosDeEventos() {
+  const d0 = ler(); const agora = Date.now();
+  const pendentes = d0.anuncios.filter((a) => a.evento && !a.evento.cancelado && a.status === 'aprovado' && d0.interesses.some((i) => i.anuncioId === a.id) && (
+    (!a.evento.avisos?.abertura && a.evento.vendasAbrem && agora >= a.evento.vendasAbrem) ||
+    (!a.evento.avisos?.vespera && a.evento.inicio - agora <= 24 * 3600_000 && a.evento.inicio > agora)));
+  if (!pendentes.length) return;
+  mudar((d) => {
+    for (const p of pendentes) {
+      const a = d.anuncios.find((x) => x.id === p.id)!; const ev = a.evento!; ev.avisos ??= {};
+      const compraram = compradoresDe(d, a.id);
+      const alvo = d.interesses.filter((i) => i.anuncioId === a.id && !compraram.has(i.userId)).map((i) => i.userId);
+      if (!ev.avisos.abertura && ev.vendasAbrem && agora >= ev.vendasAbrem) { ev.avisos.abertura = true; alvo.forEach((u) => notificar(d, u, `Abriram as vendas de ${a.titulo}. Garanta o seu antes de virar o lote.`, `/anuncio/${a.id}`)); }
+      if (!ev.avisos.vespera && ev.inicio - agora <= 24 * 3600_000 && ev.inicio > agora) { ev.avisos.vespera = true; alvo.forEach((u) => notificar(d, u, `${a.titulo} é amanhã ou hoje. Ainda dá tempo de comprar pelo app.`, `/anuncio/${a.id}`)); }
+    }
+  });
+}
+
+/** Organizador manda um recado para os interessados (no máximo um por dia, para não virar spam). */
+export function avisarInteressados(anuncioId: string, texto: string): Resultado {
+  const d0 = ler(); const uid = d0.sessao;
+  const a = d0.anuncios.find((x) => x.id === anuncioId); if (!a?.evento) return falha('Evento não encontrado.');
+  if (a.donoId !== uid) return falha('Só o organizador envia avisos.');
+  const t = texto.trim(); if (t.length < 5) return falha('Escreva o aviso.');
+  if (pedePagamentoPorFora(t) || moderar(t)) return falha('O aviso não pode ter contato, link ou pedido de pagamento fora do app.');
+  if (a.evento.avisos?.ultimoManual && Date.now() - a.evento.avisos.ultimoManual < 24 * 3600_000) return falha('Você já avisou nas últimas 24 h. Dá para mandar outro amanhã.');
+  mudar((d) => {
+    const x = d.anuncios.find((y) => y.id === anuncioId)!; x.evento!.avisos = { ...x.evento!.avisos, ultimoManual: Date.now() };
+    const compraram = compradoresDe(d, x.id);
+    d.interesses.filter((i) => i.anuncioId === x.id && !compraram.has(i.userId)).forEach((i) => notificar(d, i.userId, `${x.titulo}: ${t}`, `/anuncio/${x.id}`));
+  });
+  return { ok: true };
 }

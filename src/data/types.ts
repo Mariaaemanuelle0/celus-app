@@ -60,7 +60,15 @@ export type Anuncio = {
   revisar?: boolean;
   convite?: Convite;
   /** Evento com ingresso: data, hora e lotes. */
-  evento?: { inicio: number; fim: number; cancelado?: boolean };
+  evento?: {
+    inicio: number; fim: number; cancelado?: boolean;
+    /** Antes desta data o evento está em divulgação: dá para marcar interesse, ainda não dá para comprar. */
+    vendasAbrem?: number;
+    /** Avisos já enviados aos interessados. */
+    avisos?: { abertura?: boolean; vespera?: boolean; ultimoManual?: number };
+    /** Só nos dados de demonstração: interessados fictícios para o contador não começar em zero. */
+    interesseBase?: number;
+  };
   lotes?: Lote[];
 };
 

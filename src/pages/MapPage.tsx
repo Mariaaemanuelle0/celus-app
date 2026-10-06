@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CATEGORIAS, COMODIDADES, ORDEM_CATEGORIAS, PROFISSOES } from '../data/catalogo';
 import type { Anuncio, Categoria } from '../data/types';
 import { emDestaque, useAnuncios } from '../data/useAnuncios';
+import { numerosEvento } from '../store/acoes';
 import { IconeCategoria, Miniatura, toast, useLocalizacao } from '../components/ui';
 import { Mapa, type Celula, type Pino } from '../components/Mapa';
 import { centroPiloto, distanciaKm, formatarDistancia, type Ponto } from '../lib/geo';
@@ -216,6 +217,9 @@ export function MapPage() {
 }
 
 function Cartao({ a, d }: { a: Anuncio; d: number }) {
+  const interesses = useDB((x) => x.interesses);
+  const reservas = useDB((x) => x.reservas);
+  const n = a.evento ? numerosEvento({ reservas, interesses }, a) : null;
   return (
     <Link id={`a-${a.id}`} to={`/anuncio/${a.id}`} className="cartao">
       <Miniatura a={a} />
@@ -225,7 +229,8 @@ function Cartao({ a, d }: { a: Anuncio; d: number }) {
         <span className="meta">{a.evento ? dataEvento(a.evento.inicio) : nomeSub(a)} a {formatarDistancia(d)}{a.metragemM2 ? `, ${a.metragemM2} m²` : ''}</span>
         <span className="row" style={{ gap: 10 }}>
           <span className="preco">{rotuloPreco(a)}</span>
-          <span className="nota"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg>{virgula(nota(a))}</span>
+          {n ? <span className="nota">{n.vao + n.interesse} na lista</span> : null}
+          {!n && <span className="nota"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg>{virgula(nota(a))}</span>}
         </span>
       </div>
     </Link>

@@ -42,7 +42,10 @@ export function anunciosFicticios(): Anuncio[] {
   const kmLat = 1 / 110.574;
   const kmLng = 1 / (111.32 * Math.cos((c.lat * Math.PI) / 180));
   const evento: Semente = { id: 's17', categoria: 'eventos', subcategoria: 'ingressos', titulo: 'Calourada da Atlética', descricao: 'Festa de boas-vindas dos calouros com DJ, open de água e área externa. Proibido para menores de 18.', bairro: 'Jardim', dx: 1.1, dy: -0.35, tipoPreco: 'ingresso', capacidade: 400, manualBonsModos: 'Leve documento com foto. Meia-entrada: carteirinha estudantil válida na entrada.', notaQualidade: 4.7, notaCustoBeneficio: 4.6, totalAvaliacoes: 12, totalSonhos: 40 };
-  const extras = [{ ...evento, evento: { inicio: sab, fim: sab + 6 * 3600_000 }, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 150, vendidos: 132, meia: true }, { id: 'l2', nome: '2º lote', preco: 45, qtd: 250, vendidos: 0, meia: true }] }];
+  const extras = [{ ...evento, evento: { inicio: sab, fim: sab + 6 * 3600_000, interesseBase: 214 }, lotes: [{ id: 'l1', nome: '1º lote', preco: 30, qtd: 150, vendidos: 132, meia: true }, { id: 'l2', nome: '2º lote', preco: 45, qtd: 250, vendidos: 0, meia: true }] }];
+  const daqui3 = Date.now() + 3 * 86_400_000, sunset = new Date(Date.now() + 16 * 86_400_000); sunset.setHours(17, 0, 0, 0);
+  extras.push({ id: 's18', categoria: 'eventos', subcategoria: 'ingressos', titulo: 'Sunset na Laje', descricao: 'Fim de tarde com DJ e vista para a cidade. Lote promocional para quem marcar interesse antes de abrir as vendas.', bairro: 'Vila', dx: -0.9, dy: -1.05, tipoPreco: 'ingresso', capacidade: 300, manualBonsModos: 'Documento com foto na entrada. Proibido para menores de 18.', notaQualidade: 5, notaCustoBeneficio: 5, totalAvaliacoes: 0, totalSonhos: 18,
+    evento: { inicio: sunset.getTime(), fim: sunset.getTime() + 5 * 3600_000, vendasAbrem: daqui3, interesseBase: 96 }, lotes: [{ id: 'l1', nome: 'Lote promocional', preco: 35, qtd: 100, vendidos: 0, meia: true }, { id: 'l2', nome: '1º lote', preco: 50, qtd: 200, vendidos: 0, meia: true }] } as typeof extras[number]);
   return [...S, ...extras].map(({ dx, dy, ...a }) => ({
     comodidades: [], extras: [], limpezaInclusa: false, totalSonhos: 0,
     donoId: 'celus-demo', status: 'aprovado' as const, fotos: [], criadoEm: 0,

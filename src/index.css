@@ -417,7 +417,8 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .rota .hint { flex: 1; }
 
 /* Eventos e ingressos */
-.data-evento { margin: -2px 0 4px; font-weight: 600; color: var(--accent-2); text-transform: capitalize; }
+.data-evento { margin: -2px 0 4px; font-weight: 600; color: var(--accent-2); }
+.data-evento::first-letter { text-transform: uppercase; }
 .lote { padding: 12px 14px; }
 .lote.esgotado { opacity: .55; }
 .lote-linha { display: flex; align-items: center; gap: 10px; padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--line); font-size: 14.5px; }
@@ -437,3 +438,14 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .portaria input { font-size: 24px; letter-spacing: .2em; text-align: center; text-transform: uppercase; }
 .portaria .btn { width: auto; }
 .portaria-res { margin-top: 12px; font-size: 15px; }
+
+/* Interesse em eventos */
+.hype { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 12px; font-size: 14px; color: var(--text-2); }
+.hype b { color: var(--text); font-size: 16px; font-weight: 500; margin-right: 3px; }
+.hype .btn { margin-left: auto; }
+.hype .btn[aria-pressed="true"] { background: #F07AA8; }
+.engaj { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.engaj-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.engaj-nums div { display: flex; flex-direction: column; }
+.engaj-nums b { font-size: 18px; font-weight: 500; }
+.engaj-nums span { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
