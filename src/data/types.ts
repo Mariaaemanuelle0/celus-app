@@ -8,7 +8,10 @@ export type Extra = { nome: string; preco: number };
 /** Horário de funcionamento por dia da semana (0 = domingo): [abre, fecha] em minutos do dia, ou null = fechado. */
 export type Agenda = { dias: ([number, number] | null)[]; bloqueios: string[] };
 
-export type StatusAnuncio = 'pendente' | 'aprovado' | 'recusado' | 'pausado';
+export type StatusAnuncio = 'pendente' | 'aprovado' | 'recusado' | 'pausado' | 'convite';
+
+/** Cadastro assistido: a equipe Celus cadastra no local e o anfitrião assume o anúncio com um código. */
+export type Convite = { nome: string; email: string; codigo: string; porId: string; t: number; aceitoEm?: number };
 
 export type Anuncio = {
   id: string;
@@ -52,6 +55,7 @@ export type Anuncio = {
   semSupervisao?: number;
   /** Mudança de título, foto ou descrição esperando a curadoria conferir (o anúncio segue no ar). */
   revisar?: boolean;
+  convite?: Convite;
 };
 
 export type Verificacao = 'nao_enviado' | 'em_analise' | 'verificado';

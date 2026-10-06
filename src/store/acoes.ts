@@ -492,3 +492,34 @@ export function atualizarPerfil(dados: { foto?: string; bio: string }) {
 }
 
 export const marcarLidas = () => { const id = sessao(); if (id) mudar((d) => { d.notificacoes.forEach((n) => { if (n.userId === id) n.lida = true; }); }); };
+
+/* ---------- Cadastro assistido (equipe Celus no local) ---------- */
+export function criarAnuncioAssistido(a: Parameters<typeof criarAnuncio>[0], anfitriao: { nome: string; email: string }): { ok: true; codigo: string } | { ok: false; erro: string } {
+  const d0 = ler(); const uid = d0.sessao; if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (!d0.usuarios[uid]?.equipeCelus) return { ok: false, erro: 'Só a equipe Celus faz cadastro assistido.' };
+  const email = anfitriao.email.trim().toLowerCase();
+  if (anfitriao.nome.trim().length < 2) return { ok: false, erro: 'Informe o nome do anfitrião.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: 'Informe o e-mail do anfitrião.' };
+  const codigo = 'CEL-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  mudar((d) => {
+    d.anuncios.push({ ...a, id: novoId(), donoId: uid, status: 'convite', notaQualidade: 5, notaCustoBeneficio: 5, totalAvaliacoes: 0, totalSonhos: 0, criadoEm: Date.now(), convite: { nome: anfitriao.nome.trim(), email, codigo, porId: uid, t: Date.now() } });
+    const dono = Object.values(d.usuarios).find((x) => x.email === email);
+    if (dono) notificar(d, dono.id, `A equipe Celus cadastrou um anúncio para você. Confira e assuma no Rentabilizar.`, '/renda');
+  });
+  return { ok: true, codigo };
+}
+
+/** O anfitrião confere o cadastro feito pela equipe, aceita as regras e passa a ser o dono. Já entra no mapa (a equipe esteve no local). */
+export function assumirAnuncio(codigoOuId: string): Resultado {
+  const d0 = ler(); const uid = d0.sessao; if (!uid) return falha('Entre na sua conta.');
+  const alvo = codigoOuId.trim().toUpperCase();
+  const a = d0.anuncios.find((x) => x.status === 'convite' && (x.convite?.codigo === alvo || x.id === codigoOuId));
+  if (!a || !a.convite) return falha('Código não encontrado. Confira com quem fez o cadastro.');
+  mudar((d) => {
+    const x = d.anuncios.find((y) => y.id === a.id)!;
+    const por = x.convite!.porId;
+    x.donoId = uid; x.status = 'aprovado'; x.convite = { ...x.convite!, aceitoEm: Date.now() };
+    notificar(d, por, `${d.usuarios[uid]?.nome.split(' ')[0] ?? 'O anfitrião'} assumiu ${x.titulo}. Já está no mapa.`, '/renda');
+  });
+  return { ok: true };
+}

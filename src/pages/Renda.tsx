@@ -11,12 +11,12 @@ import {
   COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
 } from '../lib/regras';
 import {
-  alternarDisponivel, arquivarPorFora, avaliarHospede, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
+  alternarDisponivel, arquivarPorFora, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
   denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
 } from '../store/acoes';
 import { useDB, useUsuario } from '../store/db';
 
-const STATUS_AN: Record<string, string> = { pendente: 'Aguardando aprovação', aprovado: 'No mapa', recusado: 'Recusado', pausado: 'Pausado' };
+const STATUS_AN: Record<string, string> = { pendente: 'Aguardando aprovação', aprovado: 'No mapa', recusado: 'Recusado', pausado: 'Pausado', convite: 'Esperando o anfitrião' };
 
 /* ---------------- Painel ---------------- */
 const dataCurta = (t: number) => new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -36,7 +36,7 @@ export function Painel() {
   const [benef, setBenef] = useState({ anuncioId: '', nome: '', custo: 30 });
   const [denunciar, setDenunciar] = useState<string | null>(null);
 
-  const meus = anuncios.filter((a) => a.donoId === u.id);
+  const meus = anuncios.filter((a) => a.donoId === u.id && a.status !== 'convite');
   const servicos = meus.filter((a) => a.categoria === 'servicos');
   const recebidas = reservas.filter((r) => meus.some((a) => a.id === r.anuncioId));
   const chamados = recebidas.filter((r) => r.tipo === 'servico' && ['solicitado', 'aceito', 'a_caminho', 'em_andamento'].includes(r.status));
@@ -53,19 +53,23 @@ export function Painel() {
 
   if (!meus.length) return (
     <>
+      <ConvitesRecebidos />
+      <CadastrosAssistidos />
       <h1>Seu espaço ou serviço trabalhando por você</h1>
       <p className="lead">Uma varanda, uma sala, uma vaga, um banheiro com chuveiro ou o seu serviço. Você define preço, horários e extras.</p>
       <ol className="etapas">
         <li><b>Cadastre</b><span>Fotos, preço por pacote e o manual de bons modos. Leva poucos minutos.</span></li>
         <li><b>A equipe Celus revisa</b><span>Conferimos tudo antes de aparecer no mapa.</span></li>
-        <li><b>Receba 85% de cada reserva</b><span>A Celus fica com 15%. Quem reserva paga uma taxa à parte.</span></li>
+        <li><b>Receba 85% de cada reserva</b><span>A Celus fica com 15%. Você recebe pelo app, sem cobrar nada no local.</span></li>
       </ol>
       <Link className="btn" to="/renda/anunciar">Anunciar agora</Link>
+      <TenhoCodigo />
     </>
   );
 
   return (
     <>
+      <ConvitesRecebidos />
       <h1>Seu painel</h1>
 
       {servicos.filter((a) => a.status === 'aprovado').map((a) => {
@@ -143,6 +147,8 @@ export function Painel() {
       ))}</div>
       <Link className="btn ghost" style={{ marginTop: 12 }} to="/renda/anunciar">Anunciar outro</Link>
 
+      <CadastrosAssistidos />
+
       <h2>Reservas e repasses</h2>
       {historico.length ? <div className="stack">{historico.map((r) => {
         const a = anuncioDe(r.anuncioId)!;
@@ -189,6 +195,72 @@ export function Painel() {
         );
       })}</div> : <div className="empty">Nenhum story no ar nos seus espaços agora.</div>}
       <p className="hint" style={{ marginTop: 8 }}>Você não pode apagar o story de um cliente, nem quando ele critica. Se algo quebrar as regras, denuncie e a curadoria Celus decide.</p>
+    </>
+  );
+}
+
+/** Anúncios que a equipe Celus cadastrou para o e-mail desta conta. */
+function ConvitesRecebidos() {
+  const u = useUsuario()!;
+  const anuncios = useDB((d) => d.anuncios);
+  const [aceite, setAceite] = useState(false);
+  const meus = anuncios.filter((a) => a.status === 'convite' && a.convite?.email === u.email);
+  if (!meus.length) return null;
+  return (
+    <div className="stack" style={{ marginBottom: 20 }}>
+      {meus.map((a) => (
+        <div key={a.id} className="convite">
+          <div className="eyebrow">A equipe Celus cadastrou para você</div>
+          <div className="listrow" style={{ padding: '8px 0 0' }}><Miniatura a={a} /><div><span className="t">{a.titulo}</span><span className="meta">{rotuloPreco(a)}</span></div></div>
+          <p className="hint" style={{ margin: '10px 0' }}>Confira os dados. Depois de assumir, você edita preço, horários e fotos quando quiser.</p>
+          <label className="check"><input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} /><span>Sou o responsável por este espaço, o imóvel e o condomínio permitem a atividade, e concordo que todo pagamento é feito pelo app, com comissão de {Math.round(COMISSAO * 100)}%.</span></label>
+          <button className="btn" style={{ marginTop: 10 }} disabled={!aceite} onClick={() => { const r = assumirAnuncio(a.id); toast(r.ok ? 'Anúncio assumido. Já está no mapa' : r.erro); }}>Assumir anúncio</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Campo para quem recebeu o código por mensagem. */
+function TenhoCodigo() {
+  const [cod, setCod] = useState('');
+  const [aberto, setAberto] = useState(false);
+  if (!aberto) return <button className="back" style={{ marginTop: 16 }} onClick={() => setAberto(true)}>A equipe Celus cadastrou meu espaço e tenho um código</button>;
+  return (
+    <form className="box" style={{ padding: 14, marginTop: 16 }} onSubmit={(e) => { e.preventDefault(); const r = assumirAnuncio(cod); toast(r.ok ? 'Anúncio assumido. Já está no mapa' : r.erro); }}>
+      <label className="campo">Código do cadastro<input className="num" placeholder="CEL-0000" value={cod} onChange={(e) => setCod(e.target.value.toUpperCase())} /></label>
+      <p className="hint">Ao assumir, você confirma que é o responsável pelo espaço, que o imóvel e o condomínio permitem a atividade e que todo pagamento é feito pelo app.</p>
+      <button className="btn sm" disabled={cod.length < 6}>Assumir anúncio</button>
+    </form>
+  );
+}
+
+/** Para a equipe: cadastros feitos no local, esperando o anfitrião assumir. */
+function CadastrosAssistidos() {
+  const u = useUsuario()!;
+  const anuncios = useDB((d) => d.anuncios);
+  const feitos = anuncios.filter((a) => a.convite?.porId === u.id);
+  if (!u.equipeCelus || !feitos.length) return null;
+  const link = typeof location !== 'undefined' ? location.origin : '';
+  return (
+    <>
+      <h2>Cadastros que você fez</h2>
+      <div className="stack">{feitos.map((a) => {
+        const c = a.convite!;
+        const msg = `Oi, ${c.nome.split(' ')[0]}! Seu espaço "${a.titulo}" já está cadastrado na Celus. Crie sua conta com o e-mail ${c.email} em ${link} e assuma o anúncio no Rentabilizar. Se pedir, o código é ${c.codigo}.`;
+        return (
+          <div key={a.id} className="box" style={{ padding: 14 }}>
+            <div className="row" style={{ flexWrap: 'nowrap' }}><b className="sp">{a.titulo}</b><span className={`status ${c.aceitoEm ? 'aprovado' : 'pendente'}`}>{c.aceitoEm ? 'Assumido' : 'Esperando'}</span></div>
+            <div className="meta">{c.nome}, {c.email}</div>
+            {!c.aceitoEm && (
+              <div className="row" style={{ marginTop: 8 }}>
+                <span className="code num" style={{ fontSize: 18, letterSpacing: '.08em' }}>{c.codigo}</span><span className="sp" />
+                <a className="btn sm ghost" href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer">Enviar no WhatsApp</a>
+              </div>
+            )}
+          </div>
+        );
+      })}</div>
     </>
   );
 }
@@ -249,14 +321,40 @@ function paraDados(f: Rascunho) {
 export function Anunciar() {
   const nav = useNavigate();
   const onde = useLocalizacao();
+  const u = useUsuario()!;
+  const [assistido, setAssistido] = useState(false);
+  const [anf, setAnf] = useState({ nome: '', email: '' });
+  const [erroAnf, setErroAnf] = useState('');
   return (
-    <FormAnuncio inicial={RASCUNHO} titulo="Anunciar" botao="Enviar para aprovação"
-      lead={`O anúncio fica na posição onde você está agora${onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. A equipe Celus revisa antes de publicar.`}
-      onEnviar={(f) => {
-        const p = onde ?? centroPiloto();
-        const id = criarAnuncio({ ...paraDados(f), lat: p.lat, lng: p.lng, agenda: agendaPadrao(tipoPrecoDe(f.cat)) });
-        if (id) { toast('Enviado para a curadoria'); nav('/renda'); }
-      }} />
+    <>
+      {u.equipeCelus && (
+        <div className="box assistido">
+          <label className="check"><input type="checkbox" checked={assistido} onChange={(e) => setAssistido(e.target.checked)} /><span><b>Cadastro assistido</b><br /><span className="hint">Estou no local cadastrando para um anfitrião. Ele recebe um código e assume o anúncio.</span></span></label>
+          {assistido && (
+            <div className="grid2" style={{ marginTop: 12 }}>
+              <label className="campo">Nome do anfitrião<input id="as-nome" value={anf.nome} onChange={(e) => setAnf({ ...anf, nome: e.target.value })} /></label>
+              <label className="campo">E-mail do anfitrião<input id="as-email" type="email" value={anf.email} onChange={(e) => setAnf({ ...anf, email: e.target.value })} /></label>
+            </div>
+          )}
+          {erroAnf && <p className="erro" style={{ marginTop: 8 }}>{erroAnf}</p>}
+        </div>
+      )}
+      <FormAnuncio inicial={RASCUNHO} titulo={assistido ? 'Cadastrar para um anfitrião' : 'Anunciar'} botao={assistido ? 'Gerar código para o anfitrião' : 'Enviar para aprovação'}
+        lead={assistido
+          ? `O pin fica onde você está agora${onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. Como você esteve no local, o anúncio entra no mapa assim que o anfitrião assumir.`
+          : `O anúncio fica na posição onde você está agora${onde ? '' : ' (sem localização: usamos o centro da cidade piloto)'}. A equipe Celus revisa antes de publicar.`}
+        onEnviar={(f) => {
+          const p = onde ?? centroPiloto();
+          const dados = { ...paraDados(f), lat: p.lat, lng: p.lng, agenda: agendaPadrao(tipoPrecoDe(f.cat)) };
+          if (assistido) {
+            const r = criarAnuncioAssistido(dados, anf);
+            if (!r.ok) { setErroAnf(r.erro); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+            toast(`Código ${r.codigo} gerado. Envie ao anfitrião`); nav('/renda'); return;
+          }
+          const id = criarAnuncio(dados);
+          if (id) { toast('Enviado para a curadoria'); nav('/renda'); }
+        }} />
+    </>
   );
 }
 

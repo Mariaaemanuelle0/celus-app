@@ -406,3 +406,7 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 
 .regra-pag { margin-top: 16px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 13.5px; color: var(--text-2); }
 .regra-pag b { color: var(--text); }
+
+/* Cadastro assistido */
+.assistido { padding: 14px; margin-bottom: 18px; border-color: rgba(76,141,255,.4); }
+.convite { padding: 16px; border-radius: var(--r); border: 1px solid rgba(76,141,255,.45); background: radial-gradient(120% 120% at 100% 0%, rgba(76,141,255,.18), transparent 60%), var(--surface); }

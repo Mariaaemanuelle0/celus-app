@@ -26,6 +26,11 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Ficar curto só com entrada independente; comunicação pelo uso real (descansar, esperar voo, trocar de roupa, viagem a trabalho) para não lembrar motel.
 - Reservar no Ficar exige identidade verificada.
 
+## Cadastro assistido (lançamento)
+- No início, a fundadora visita os locais, oferece a Celus e cadastra no local, com o celular, para o anfitrião.
+- No app: modo "Cadastro assistido" para a equipe Celus. O pin fica onde a pessoa está; o anfitrião recebe um código (por WhatsApp) e assume o anúncio ao criar a conta com o e-mail informado.
+- Ao assumir, o anfitrião declara que é o responsável, que o imóvel e o condomínio permitem a atividade e aceita pagamento só pelo app e a comissão. Como a equipe esteve no local, o anúncio entra no mapa direto.
+
 ## Camping
 - Camping entra no Ficar: casas com quintal ou terreno amplo parados (ex.: litoral, como Guarujá) viram área de barraca.
 - Preço por pessoa por noite; opção de "passar o dia" (day use) com pacote por horas.
