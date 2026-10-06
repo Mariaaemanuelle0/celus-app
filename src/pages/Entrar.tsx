@@ -125,7 +125,7 @@ function Radar() {
         </defs>
         <circle cx="170" cy="145" r="128" fill="url(#rg)" />
         {[44, 86, 128].map((r) => <circle key={r} cx="170" cy="145" r={r} fill="none" stroke="#4C8DFF" strokeOpacity={r === 128 ? 0.55 : 0.2} strokeDasharray={r === 128 ? '2 6' : undefined} />)}
-        <svg x="134" y="109" width="72" height="72" viewBox="0 0 64 64"><Marca /></svg>
+        <image href="/polvo.png" x="126" y="101" width="88" height="88" />
         {pontos.map(([c, x, y]) => (
           <g key={c} transform={`translate(${x - 17} ${y - 17})`} style={{ color: CATEGORIAS[c].cor }}>
             <rect width="34" height="34" rx="11" fill="#0A1120" stroke="currentColor" strokeOpacity=".55" />

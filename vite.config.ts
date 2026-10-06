@@ -7,8 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['celus.svg', 'apple-touch-icon.png'],
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
+      includeAssets: ['favicon.png', 'polvo.png', 'apple-touch-icon.png'],
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
       manifest: {
         name: 'Celus',
         short_name: 'Celus',
