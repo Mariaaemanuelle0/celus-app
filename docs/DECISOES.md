@@ -87,3 +87,23 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 6. Feed e stories.
 7. Chat, semáforo e celus.
 Depois: fluxo completo do profissional, cancelamento e reembolso, busca por texto, notificações, painel de curadoria, gestão do anfitrião (reservas recebidas, repasses).
+
+## Pontos para os termos e contratos (revisão com o advogado no final)
+Lista que cresce conforme decidimos. Serve de base para os termos de uso, a política de privacidade e os contratos de adesão.
+- Uso só por maiores de 18 anos, com identidade verificada para chat, stories e Ficar.
+- Pagamento só pelo app, antecipado (cartão ou Pix). Cobrar por fora, em dinheiro, maquininha ou Pix direto, leva à suspensão do anfitrião ou profissional.
+- Comissão de 15% (13% com benefício em celus), taxa fixa do usuário, prazos de repasse e retenção até o uso.
+- Estorno de cartão descontado do próximo repasse do anfitrião.
+- Regras de cancelamento e reembolso (hora e serviço; diária 48 h / 50%).
+- Timer: tolerância, cobrança por minuto e teto de 2x a hora.
+- Código de chegada obrigatório; trava após 5 tentativas erradas.
+- Catraca livre: conferência do espaço depois de 5 locações seguidas sem supervisão.
+- Profissionais como freelancers, sem vínculo; jornada máxima de 12 h e pausa de 6 h.
+- Nenhum espaço pode deixar duas pessoas desconhecidas sozinhas num ambiente íntimo fechado.
+- Stories: só de quem está no local, somem em 3 h, anfitrião não apaga; curadoria decide denúncias; proibido expor pessoas sem autorização e crianças.
+- Chat do quadrante: mensagens somem em 10 min; proibido telefone, links e combinar pagamento.
+- Semáforo é percepção de usuários, não garantia de segurança.
+- Celus são pontos: não valem dinheiro, não compram, não vendem, não transferem.
+- Nota fiscal: anfitrião e profissional sobre os próprios ganhos; Celus sobre a comissão.
+- Imóveis: sem comissão sobre venda; corretagem com o sócio que tem CRECI.
+- LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).
