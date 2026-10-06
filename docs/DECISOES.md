@@ -26,6 +26,12 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Ficar curto só com entrada independente; comunicação pelo uso real (descansar, esperar voo, trocar de roupa, viagem a trabalho) para não lembrar motel.
 - Reservar no Ficar exige identidade verificada.
 
+## Camping
+- Camping entra no Ficar: casas com quintal ou terreno amplo parados (ex.: litoral, como Guarujá) viram área de barraca.
+- Preço por pessoa por noite; opção de "passar o dia" (day use) com pacote por horas.
+- Comodidades típicas: banheiro, chuveiro, churrasqueira, sombra, ponto de luz, aceita pet. Extras como aluguel de barraca e lenha.
+- Atenção do anfitrião: regras do condomínio e da prefeitura sobre camping e hospedagem.
+
 ## Código de chegada (como o da Uber)
 - Toda reserva e todo chamado têm um código de 4 dígitos que só quem reservou vê.
 - Espaço com alguém no local (presencial, responsável, portaria): quem recebe digita o código no app e só então o tempo começa.
@@ -106,4 +112,5 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Celus são pontos: não valem dinheiro, não compram, não vendem, não transferem.
 - Nota fiscal: anfitrião e profissional sobre os próprios ganhos; Celus sobre a comissão.
 - Imóveis: sem comissão sobre venda; corretagem com o sócio que tem CRECI.
+- Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
 - LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).

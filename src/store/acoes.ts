@@ -125,7 +125,7 @@ export function reservarDiaria(a: Anuncio, checkin: number, noites: number, pess
   if (pessoas > a.capacidade) return { ok: false, erro: `Capacidade máxima: ${a.capacidade} pessoas.` };
   const erro = checarDisponibilidade(a, checkin, fim, pessoas);
   if (erro) return { ok: false, erro };
-  const subtotal = (a.preco ?? 0) * noites + extras.reduce((s, e) => s + e.preco, 0);
+  const subtotal = (a.preco ?? 0) * noites * (a.porPessoa ? pessoas : 1) + extras.reduce((s, e) => s + e.preco, 0);
   const id = novoId();
   mudar((d) => {
     d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'diaria', status: 'confirmada', inicio: checkin, noites, pessoas, extras, extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: 0, multa: 0, total: subtotal, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now(), comissao: comissaoAtual(d, a), pagamento });

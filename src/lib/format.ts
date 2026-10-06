@@ -20,9 +20,9 @@ export function rotuloPreco(a: Anuncio, curto = false): string {
   }
   if (a.tipoPreco === 'diaria' && a.pacotes?.length) {
     const p = a.pacotes[0];
-    return curto ? brl(p.preco) : `${brl(p.preco)}/${rotuloHoras(p.horas)} ou ${brl(a.preco ?? 0)}/diária`;
+    return curto ? brl(p.preco) : `${brl(p.preco)}/${rotuloHoras(p.horas)} ou ${brl(a.preco ?? 0)}/diária${a.porPessoa ? ', por pessoa' : ''}`;
   }
-  if (a.tipoPreco === 'diaria') return `${brl(a.preco ?? 0)}/diária`;
+  if (a.tipoPreco === 'diaria') return `${brl(a.preco ?? 0)}/diária${a.porPessoa ? ' por pessoa' : ''}`;
   if (a.tipoPreco === 'servico') return brl(a.preco ?? 0) + (a.unidadePreco ?? '');
   if (a.unidadePreco) return brl(a.preco ?? 0) + a.unidadePreco;
   return curto ? `R$ ${Math.round((a.preco ?? 0) / 1000)} mil` : brl(a.preco ?? 0);

@@ -62,6 +62,7 @@ export function AnuncioPage() {
   const tp: Anuncio['tipoPreco'] = hibrido && modoFicar === 'horas' ? 'pacote' : a.tipoPreco;
   const taxa = tp === 'pacote' ? taxaUsuarioDe(a, 'hora') : 0;
   const pes = a.porPessoa ? pessoas : 1;
+  const hosp = a.porPessoa ? pessoas : 1;
   const beneficiosAqui = beneficios.filter((b) => b.anuncioId === a.id);
   const dist = onde ? distanciaKm(onde, a) : null;
 
@@ -103,7 +104,7 @@ export function AnuncioPage() {
     return t.map((x, i) => `${DIAS[i]} ${x}`).join(', ');
   })();
   const total = tp === 'pacote' && pacote ? pacote.preco * pes + taxa + somaExtras
-    : tp === 'diaria' ? (a.preco ?? 0) * noites + somaExtras
+    : tp === 'diaria' ? (a.preco ?? 0) * noites * hosp + somaExtras
     : servico ? (a.preco ?? 0) * (a.unidadePreco === '/h' ? horas : 1) + TAXA_SERVICO : null;
   const temComod = Object.keys(COMODIDADES).filter((k) => a.comodidades.includes(k));
 
@@ -206,7 +207,7 @@ export function AnuncioPage() {
       {hibrido && (
         <>
           <h2>Por quanto tempo você quer ficar?</h2>
-          <div className="seg"><button aria-pressed={modoFicar === 'horas'} onClick={() => setModoFicar('horas')}>Algumas horas</button><button aria-pressed={modoFicar === 'diarias'} onClick={() => setModoFicar('diarias')}>Diárias</button></div>
+          <div className="seg"><button aria-pressed={modoFicar === 'horas'} onClick={() => setModoFicar('horas')}>{a.subcategoria === 'camping' ? 'Passar o dia' : 'Algumas horas'}</button><button aria-pressed={modoFicar === 'diarias'} onClick={() => setModoFicar('diarias')}>{a.subcategoria === 'camping' ? 'Acampar' : 'Diárias'}</button></div>
         </>
       )}
       {tp === 'pacote' && a.pacotes && (
@@ -253,10 +254,10 @@ export function AnuncioPage() {
       {(tp === 'pacote' || tp === 'diaria') && (
         <div className="box resumo">
           {tp === 'pacote' && pacote && <div className="sumline"><span>Pacote {rotuloHoras(pacote.horas)}{pes > 1 ? ` × ${pes}` : ''}</span><span>{brl(pacote.preco * pes)}</span></div>}
-          {tp === 'diaria' && <div className="sumline"><span>{noites} diária{noites > 1 ? 's' : ''} × {brl(a.preco ?? 0)}</span><span>{brl((a.preco ?? 0) * noites)}</span></div>}
+          {tp === 'diaria' && <div className="sumline"><span>{noites} diária{noites > 1 ? 's' : ''} × {brl(a.preco ?? 0)}{hosp > 1 ? ` × ${hosp} pessoas` : ''}</span><span>{brl((a.preco ?? 0) * noites * hosp)}</span></div>}
           {extras.map((e) => <div key={e.nome} className="sumline"><span>{e.nome}</span><span>{brl(e.preco)}</span></div>)}
           {tp === 'pacote' && taxa > 0 && <div className="sumline"><span>Taxa de serviço</span><span>{brl(taxa)}</span></div>}
-          <div className="sumline"><span>Total</span><span>{brl((tp === 'pacote' && pacote ? pacote.preco * pes + taxa : (a.preco ?? 0) * noites) + somaExtras)}</span></div>
+          <div className="sumline"><span>Total</span><span>{brl(total ?? 0)}</span></div>
         </div>
       )}
 

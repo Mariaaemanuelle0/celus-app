@@ -239,7 +239,7 @@ function paraDados(f: Rascunho) {
   return {
     categoria: f.cat, subcategoria: f.sub, profissao: servico ? f.prof : undefined, titulo: f.titulo.trim(), descricao: f.descricao.trim(), bairro: f.bairro.trim(),
     tipoPreco: tipo, pacotes: usaPacotes ? f.pacotes.filter((x) => x.preco > 0 && x.horas > 0).sort((a, b) => a.horas - b.horas) : undefined,
-    preco: tipo === 'pacote' ? undefined : f.preco, unidadePreco: tipo === 'servico' || tipo === 'valor' ? f.unidade : undefined, porPessoa: tipo === 'pacote' ? f.porPessoa : false,
+    preco: tipo === 'pacote' ? undefined : f.preco, unidadePreco: tipo === 'servico' || tipo === 'valor' ? f.unidade : undefined, porPessoa: tipo === 'pacote' || tipo === 'diaria' ? f.porPessoa : false,
     capacidade: servico ? 1 : f.capacidade, metragemM2: servico ? undefined : f.metragem, comodidades: servico ? [] : f.comodidades,
     extras: f.extras.filter((x) => x.nome.trim()), tipoAcesso: servico ? undefined : f.acesso, responsavelLocal: f.responsavel || undefined,
     manualBonsModos: f.manual.trim(), limpezaInclusa: f.limpeza, fotos: f.fotos,
@@ -306,7 +306,7 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
       <p className="lead">{lead}</p>
       <div className="stack">
         {!travarCategoria && <div><div className="flabel">Categoria</div><div className="cats-grade">{ORDEM_CATEGORIAS.map((k) => <button type="button" key={k} className="cat" style={{ ['--c' as string]: CATEGORIAS[k].cor }} aria-pressed={f.cat === k} onClick={() => escolherCat(k)}><IconeCategoria c={k} tamanho={15} />{CATEGORIAS[k].curto ?? CATEGORIAS[k].nome}</button>)}</div></div>}
-        <div><div className="flabel">{servico ? 'Nicho' : 'Tipo'}</div><div className="chips">{Object.entries(CATEGORIAS[f.cat].subs).map(([k, n]) => <button type="button" key={k} className="chip" aria-pressed={f.sub === k} onClick={() => setF((x) => ({ ...x, sub: k, prof: servico ? Object.keys(PROFISSOES[k])[0] : '' }))}>{n}</button>)}</div></div>
+        <div><div className="flabel">{servico ? 'Nicho' : 'Tipo'}</div><div className="chips">{Object.entries(CATEGORIAS[f.cat].subs).map(([k, n]) => <button type="button" key={k} className="chip" aria-pressed={f.sub === k} onClick={() => setF((x) => ({ ...x, sub: k, prof: servico ? Object.keys(PROFISSOES[k])[0] : '', ...(k === 'camping' ? { horasFicar: false, porPessoa: true, preco: 45, capacidade: 10 } : {}) }))}>{n}</button>)}</div></div>
         {servico && <div><div className="flabel">Profissão</div><div className="chips">{Object.entries(PROFISSOES[f.sub]).map(([k, n]) => <button type="button" key={k} className="chip" aria-pressed={f.prof === k} onClick={() => set('prof', k)}>{n}</button>)}</div></div>}
         <label className="campo">{servico ? 'Seu nome e profissão' : 'Título'}<input id="a-titulo" value={f.titulo} onChange={(e) => set('titulo', e.target.value)} placeholder={servico ? 'Ex.: Ana, eletricista' : 'Ex.: Varanda com rede e ducha'} /></label>
         <label className="campo">Bairro<input id="a-bairro" value={f.bairro} onChange={(e) => set('bairro', e.target.value)} /></label>
@@ -316,7 +316,7 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
 
         {f.cat === 'ficar' && (
           <div className="box" style={{ padding: 14 }}>
-            <label className="check"><input type="checkbox" checked={f.horasFicar} onChange={(e) => set('horasFicar', e.target.checked)} /><span><b>Também alugar por algumas horas</b><br /><span className="hint">Para quem quer descansar entre compromissos, esperar um voo ou passar a noite. Só para espaço com entrada independente.</span></span></label>
+            <label className="check"><input type="checkbox" checked={f.horasFicar} onChange={(e) => set('horasFicar', e.target.checked)} /><span><b>Também alugar por algumas horas</b><br /><span className="hint">{f.sub === 'camping' ? 'Day use: para quem quer passar o dia, usar a sombra, o chuveiro e a churrasqueira sem dormir.' : 'Para quem quer descansar entre compromissos, esperar um voo ou passar a noite. Só para espaço com entrada independente.'}</span></span></label>
           </div>
         )}
         {mostraPacotes && (
@@ -330,9 +330,10 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
             {tipo === 'pacote' && <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={f.porPessoa} onChange={(e) => set('porPessoa', e.target.checked)} /><span>Cobrar por pessoa (espaço compartilhado)</span></label>}
           </div>
         )}
+        {tipo === 'diaria' && <label className="check"><input type="checkbox" checked={f.porPessoa} onChange={(e) => set('porPessoa', e.target.checked)} /><span>Cobrar por pessoa{f.sub === 'camping' ? ' (o comum em camping)' : ''}</span></label>}
         {tipo !== 'pacote' && (
           <div className="grid2">
-            <label className="campo">{tipo === 'diaria' ? 'Diária (R$)' : 'Preço (R$)'}<input id="a-preco" type="number" min={1} value={f.preco} onChange={(e) => set('preco', Number(e.target.value))} /></label>
+            <label className="campo">{tipo === 'diaria' ? (f.porPessoa ? 'Diária por pessoa (R$)' : 'Diária (R$)') : 'Preço (R$)'}<input id="a-preco" type="number" min={1} value={f.preco} onChange={(e) => set('preco', Number(e.target.value))} /></label>
             {tipo !== 'diaria' && <label className="campo">Cobrado por<select value={f.unidade} onChange={(e) => set('unidade', e.target.value)}>{(servico ? ['/h', '/visita', '/dia', '/atendimento', '/passeio'] : ['/mês', '']).map((un) => <option key={un} value={un}>{un ? un.slice(1) : 'venda'}</option>)}</select></label>}
           </div>
         )}
