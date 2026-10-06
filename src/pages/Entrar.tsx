@@ -111,25 +111,57 @@ export function Verificar() {
   );
 }
 
-/** Ilustração de abertura: o raio de busca com lugares em volta de você. */
+/**
+ * Ilustração de abertura: o polvo da Celus no centro, com os tentáculos ondulando
+ * e as oito categorias saindo dele (oito braços, oito jeitos de resolver o dia).
+ * A ondulação é um filtro de distorção aplicado só aos tentáculos; a cabeça fica parada.
+ */
 function Radar() {
-  const pontos: [Categoria, number, number][] = [
-    ['banheiro', 92, 70], ['trabalho', 232, 58], ['descanso', 268, 150], ['estacionamento', 58, 168],
-    ['servicos', 196, 222], ['eventos', 120, 236], ['ficar', 290, 236],
-  ];
+  const C = { x: 170, y: 150 }, R = 118, P = 132; // centro, raio das categorias, tamanho do polvo
+  const ordem: Categoria[] = ['banheiro', 'trabalho', 'descanso', 'ficar', 'servicos', 'eventos', 'estacionamento', 'imoveis'];
+  const pontos = ordem.map((c, i) => {
+    const ang = (-90 + i * 45) * (Math.PI / 180);
+    return { c, x: C.x + R * Math.cos(ang), y: C.y + R * Math.sin(ang), i };
+  });
+  const ox = C.x - P / 2, oy = C.y - P / 2 + 4;
   return (
     <div className="radar" aria-hidden="true">
-      <svg viewBox="0 0 340 280" width="100%">
+      <svg viewBox="0 0 340 300" width="100%">
         <defs>
-          <radialGradient id="rg" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#4C8DFF" stopOpacity=".22" /><stop offset="1" stopColor="#4C8DFF" stopOpacity="0" /></radialGradient>
+          <radialGradient id="rg" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#4C8DFF" stopOpacity=".24" /><stop offset="1" stopColor="#4C8DFF" stopOpacity="0" /></radialGradient>
+          <filter id="ondas" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018 0.03" numOctaves="2" seed="7" result="ruido">
+              <animate attributeName="baseFrequency" dur="7s" values="0.018 0.03;0.024 0.036;0.016 0.026;0.018 0.03" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="ruido" scale="9" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          {/* Cabeça parada, tentáculos ondulando: as duas máscaras se completam. */}
+          <radialGradient id="cab" cx={ox + P * 0.42} cy={oy + P * 0.27} r={P * 0.3} gradientUnits="userSpaceOnUse">
+            <stop offset=".72" stopColor="#fff" /><stop offset="1" stopColor="#000" />
+          </radialGradient>
+          <radialGradient id="tent" cx={ox + P * 0.42} cy={oy + P * 0.27} r={P * 0.3} gradientUnits="userSpaceOnUse">
+            <stop offset=".72" stopColor="#000" /><stop offset="1" stopColor="#fff" />
+          </radialGradient>
+          <mask id="m-cab"><rect x="0" y="0" width="340" height="300" fill="url(#cab)" /></mask>
+          <mask id="m-tent"><rect x="0" y="0" width="340" height="300" fill="url(#tent)" /></mask>
         </defs>
-        <circle cx="170" cy="145" r="128" fill="url(#rg)" />
-        {[44, 86, 128].map((r) => <circle key={r} cx="170" cy="145" r={r} fill="none" stroke="#4C8DFF" strokeOpacity={r === 128 ? 0.55 : 0.2} strokeDasharray={r === 128 ? '2 6' : undefined} />)}
-        <image href="/polvo.png" x="126" y="101" width="88" height="88" />
-        {pontos.map(([c, x, y]) => (
-          <g key={c} transform={`translate(${x - 17} ${y - 17})`} style={{ color: CATEGORIAS[c].cor }}>
-            <rect width="34" height="34" rx="11" fill="#0A1120" stroke="currentColor" strokeOpacity=".55" />
-            <g transform="translate(8 8)"><IconeCategoria c={c} tamanho={18} /></g>
+        <circle cx={C.x} cy={C.y} r={R + 12} fill="url(#rg)" />
+        {[50, R].map((r) => <circle key={r} cx={C.x} cy={C.y} r={r} fill="none" stroke="#4C8DFF" strokeOpacity={r === R ? 0.4 : 0.16} strokeDasharray={r === R ? '2 6' : undefined} />)}
+        {pontos.map((p) => (
+          <line key={p.c} className="braco" x1={C.x} y1={C.y} x2={p.x} y2={p.y} style={{ animationDelay: `${0.5 + p.i * 0.12}s`, color: CATEGORIAS[p.c].cor }} />
+        ))}
+        <g className="polvo-flutua">
+          <image href="/polvo.png" x={ox} y={oy} width={P} height={P} mask="url(#m-cab)" />
+          <image href="/polvo.png" x={ox} y={oy} width={P} height={P} mask="url(#m-tent)" filter="url(#ondas)" />
+        </g>
+        {pontos.map((p) => (
+          <g key={p.c} transform={`translate(${p.x - 17} ${p.y - 17})`}>
+            <g className="sai" style={{ ['--dx' as string]: `${C.x - p.x}px`, ['--dy' as string]: `${C.y - p.y}px`, animationDelay: `${0.5 + p.i * 0.12}s` }}>
+              <g className="boia" style={{ animationDelay: `${p.i * -0.7}s`, color: CATEGORIAS[p.c].cor }}>
+                <rect width="34" height="34" rx="11" fill="#0A1120" stroke="currentColor" strokeOpacity=".6" />
+                <g transform="translate(8 8)"><IconeCategoria c={p.c} tamanho={18} /></g>
+              </g>
+            </g>
           </g>
         ))}
       </svg>
