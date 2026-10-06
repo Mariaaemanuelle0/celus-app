@@ -157,3 +157,7 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
   - Transferência entre pessoas segue proibida até validação jurídica; se liberada, no formato "presentear" com limite mensal e só entre contas verificadas.
   - Condição para virar plataforma separada: base de usuários grande o bastante para os parceiros quererem comprar pontos.
   - Técnico: manter o extrato de celus como um registro próprio (ledger), para poder separar em outro sistema sem refazer o app.
+- **Trocas entre pessoas por celus (itens usados ou novos).** Pessoas anunciam objetos e recebem celus de quem quiser o item, virando uma plataforma de troca.
+  - Atenção: isso faz o celus passar de uma pessoa para outra, o contrário da regra atual ("nunca transfere"). Depende de validação jurídica (enquadramento do ponto como meio de pagamento, tributação da troca, responsabilidade por produto).
+  - Riscos a desenhar antes: item roubado ou falso, golpe na entrega, disputa, contas falsas gerando celus para "comprar" itens.
+  - Alternativa mais segura a avaliar: troca intermediada pela Celus (o item entra num catálogo curado e quem cede recebe celus da Celus, com limite), em vez de pagamento direto entre pessoas.
