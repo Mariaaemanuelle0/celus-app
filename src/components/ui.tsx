@@ -81,14 +81,14 @@ export function Moeda({ tamanho = 16 }: { tamanho?: number }) {
 }
 
 /** Lê uma imagem escolhida pela pessoa, reduzida para no máximo 1080 px. */
-export function lerImagem(file: File): Promise<string> {
+export function lerImagem(file: File, max = 1080): Promise<string> {
   return new Promise((ok, erro) => {
     const r = new FileReader();
     r.onerror = erro;
     r.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const max = 1080, k = Math.min(1, max / Math.max(img.width, img.height));
+        const k = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
         c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
         c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);

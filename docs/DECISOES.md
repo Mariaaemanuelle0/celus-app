@@ -21,6 +21,18 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Comodidades são filtros e informação da ficha (ar, ventilador, Wi-Fi, tomada, banheiro no local, acessível, estacionamento, coberta, monitorada). "Banheiro no local" é comodidade; para alugar o banheiro separado, o dono cria outro anúncio na categoria Banheiro.
 - Anúncio tem metragem, capacidade e **extras** com preço definidos pelo anfitrião (toalha, café, som).
 
+## Ficar: curto e longo no mesmo anúncio
+- A Celus é de "lance rápido", mas o Ficar oferece as duas pontas: **algumas horas** (pacotes como 3 h, 6 h, pernoite de 12 h) e **diárias**. O anfitrião escolhe uma ou as duas.
+- Ficar curto só com entrada independente; comunicação pelo uso real (descansar, esperar voo, trocar de roupa, viagem a trabalho) para não lembrar motel.
+- Reservar no Ficar exige identidade verificada.
+
+## Código de chegada (como o da Uber)
+- Toda reserva e todo chamado têm um código de 4 dígitos que só quem reservou vê.
+- Espaço com alguém no local (presencial, responsável, portaria): quem recebe digita o código no app e só então o tempo começa.
+- Profissional: ao chegar, digita o código do cliente para iniciar o serviço.
+- Fechadura digital: o código é a senha da porta.
+- 5 códigos errados travam a conferência e vão para a curadoria.
+
 ## Semáforo de segurança
 - Pequeno semáforo fixo no canto do mapa. A luz acesa é a cor da região no horário atual.
 - O usuário marca verde, amarelo ou vermelho onde está. Sem texto.
@@ -57,7 +69,7 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Pagamento entra pela Celus, gateway faz o split, parte do anfitrião fica retida até o uso. Repasse: hora D+1 após o uso; ficar/eventos 24 h após check-in; serviços D+1 após concluir.
 - Estorno de cartão é descontado do próximo repasse do anfitrião (contrato de adesão).
 - Nota fiscal: anfitrião e profissional emitem sobre os próprios ganhos; a Celus emite sobre a comissão.
-- Reservas de valor muito baixo fazem parte da marca. Pix como meio padrão.
+- Reservas de valor muito baixo fazem parte da marca. Pix como meio padrão; o app lembra a última forma usada para o próximo pagamento ser rápido (cartão salvo paga com um toque).
 
 ## Profissionais
 - Sempre freelancers. Depois de 12 h seguidas disponível, pausa obrigatória de 6 h.

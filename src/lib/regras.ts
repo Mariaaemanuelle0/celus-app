@@ -3,6 +3,11 @@ import type { Anuncio, Reserva } from '../data/types';
 import type { Ponto } from './geo';
 
 export const COMISSAO = 0.15;
+export const COMISSAO_REDUZIDA = 0.13;
+export const JORNADA_H = 12;
+export const PAUSA_H = 6;
+export const LIMITE_SEM_SUPERVISAO = 5;
+const DIA = 86_400_000;
 export const TAXA_HORA = 0.5;
 export const TAXA_SERVICO = 2;
 export const CARENCIA_MIN = 5;
@@ -48,7 +53,41 @@ export function reembolso(r: Reserva, agora = Date.now()): { valor: number; regr
     : { valor: 0, regra: 'Depois de começar, não há reembolso.' };
 }
 
-export const parteAnfitriao = (r: Reserva) => r.subtotal * (1 - COMISSAO);
+/** Taxa fixa de quem usa: R$ 0,50 por hora em espaço, R$ 2 por chamado; Ficar e Eventos sem taxa (preço final). */
+export const taxaUsuarioDe = (a: Anuncio, tipo: Reserva['tipo']) =>
+  tipo === 'servico' ? TAXA_SERVICO : a.categoria === 'ficar' || a.categoria === 'eventos' ? 0 : TAXA_HORA;
+
+export const comissaoDe = (r: Reserva) => r.comissao ?? COMISSAO;
+export const parteAnfitriao = (r: Reserva) => r.subtotal * (1 - comissaoDe(r));
+
+/** Quando o dinheiro do anfitrião é liberado: hora e serviço D+1 depois do uso; estadia 24 h após o check-in. */
+export function repasse(r: Reserva, agora = Date.now()): { estado: 'retido' | 'agendado' | 'liberado' | 'nenhum'; quando?: number } {
+  if (r.status === 'cancelada' || r.status === 'recusado' || r.status === 'solicitado') return { estado: 'nenhum' };
+  if (r.tipo === 'diaria') {
+    const quando = r.inicio + DIA;
+    if (r.status !== 'concluida' && agora < r.inicio) return { estado: 'retido' };
+    return { estado: agora >= quando ? 'liberado' : 'agendado', quando };
+  }
+  if (r.status !== 'concluida' || !r.fim) return { estado: 'retido' };
+  const quando = r.fim + DIA;
+  return { estado: agora >= quando ? 'liberado' : 'agendado', quando };
+}
+
+/** Jornada do profissional freelancer: até 12 h seguidas disponível, depois 6 h de pausa. */
+export function jornada(a: Anuncio, agora = Date.now()): { disponivel: boolean; restanteMin: number; pausaMin: number } {
+  if (a.donoId === 'celus-demo') return { disponivel: true, restanteMin: JORNADA_H * 60, pausaMin: 0 };
+  if (a.disponivelDesde) {
+    const fim = a.disponivelDesde + JORNADA_H * 3600_000;
+    if (agora < fim) return { disponivel: true, restanteMin: (fim - agora) / 60_000, pausaMin: 0 };
+    const pausaAte = fim + PAUSA_H * 3600_000;
+    return { disponivel: false, restanteMin: 0, pausaMin: Math.max(0, (pausaAte - agora) / 60_000) };
+  }
+  return { disponivel: false, restanteMin: 0, pausaMin: a.pausaAte && agora < a.pausaAte ? (a.pausaAte - agora) / 60_000 : 0 };
+}
+
+/** Catraca livre: só conta quando ninguém do local acompanha a entrada. */
+export const precisaSupervisao = (a: Anuncio) => a.tipoAcesso === 'fechadura' || a.tipoAcesso === 'responsavel' || a.tipoAcesso === 'portaria';
+export const bloqueadoPorConferencia = (a: Anuncio) => precisaSupervisao(a) && (a.semSupervisao ?? 0) >= LIMITE_SEM_SUPERVISAO;
 
 /** Moderação do chat aberto. */
 const BLOQ = ['idiota', 'burro', 'porra', 'caralho', 'merda', 'puta', 'otario', 'otário', 'vagabund', 'viado', 'arrombad'];

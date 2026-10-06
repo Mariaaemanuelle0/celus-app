@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CATEGORIAS, COMODIDADES, ORDEM_CATEGORIAS, PROFISSOES } from '../data/catalogo';
 import type { Anuncio, Categoria } from '../data/types';
-import { useAnuncios } from '../data/useAnuncios';
+import { emDestaque, useAnuncios } from '../data/useAnuncios';
 import { IconeCategoria, Miniatura, toast, useLocalizacao } from '../components/ui';
 import { centroPiloto, distanciaKm, formatarDistancia, type Ponto } from '../lib/geo';
 import { brl, nota, precoBase, rotuloPreco, virgula } from '../lib/format';
@@ -29,7 +29,7 @@ function pinPreco(a: Anuncio) {
 }
 function iconePin(a: Anuncio, longe: boolean, ativo: boolean) {
   const cor = CATEGORIAS[a.categoria].cor;
-  return L.divIcon({ className: '', html: `<div class="pin${longe ? ' far' : ''}${ativo ? ' on' : ''}" style="--c:${cor}"><i></i>${pinPreco(a)}</div>`, iconSize: [0, 0] });
+  return L.divIcon({ className: '', html: `<div class="pin${longe ? ' far' : ''}${ativo ? ' on' : ''}${emDestaque(a) ? ' dest' : ''}" style="--c:${cor}"><i></i>${pinPreco(a)}</div>`, iconSize: [0, 0] });
 }
 const iconeEu = L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
 
@@ -133,7 +133,7 @@ export function MapPage() {
     .filter((a) => !termo || semAcento(`${a.titulo} ${a.descricao} ${a.bairro} ${nomeSub(a)} ${CATEGORIAS[a.categoria].nome}`).includes(termo))
     .map((a) => ({ a, d: distanciaKm(centro, a) }))
     .sort((x, y) => x.d - y.d), [anuncios, cat, sub, prof, comod, precoMax, notaMin, termo, centro]);
-  const noRaio = todos.filter((x) => x.d <= raio);
+  const noRaio = todos.filter((x) => x.d <= raio).sort((x, y) => Number(emDestaque(y.a)) - Number(emDestaque(x.a)));
   const nFiltros = comod.length + (precoMax ? 1 : 0) + (notaMin ? 1 : 0) + (raio !== 1.5 ? 1 : 0);
   const escolhido = noRaio.find((x) => x.a.id === sel) ?? todos.find((x) => x.a.id === sel);
 
@@ -256,6 +256,7 @@ function Cartao({ a, d }: { a: Anuncio; d: number }) {
       <Miniatura a={a} />
       <div className="cartao-txt">
         <span className="t">{a.titulo}</span>
+        {emDestaque(a) && <span className="selo">Destaque</span>}
         <span className="meta">{nomeSub(a)} a {formatarDistancia(d)}{a.metragemM2 ? `, ${a.metragemM2} m²` : ''}</span>
         <span className="row" style={{ gap: 10 }}>
           <span className="preco">{rotuloPreco(a)}</span>

@@ -31,7 +31,7 @@ export type Anuncio = {
   metragemM2?: number;
   comodidades: string[];
   extras: Extra[];
-  tipoAcesso?: 'fechadura' | 'responsavel' | 'presencial';
+  tipoAcesso?: 'fechadura' | 'responsavel' | 'presencial' | 'portaria';
   responsavelLocal?: string;
   manualBonsModos: string;
   limpezaInclusa: boolean;
@@ -42,6 +42,16 @@ export type Anuncio = {
   totalAvaliacoes: number;
   totalSonhos: number;
   criadoEm: number;
+  /** Profissional: início da jornada atual (null = indisponível) e fim da pausa obrigatória. */
+  disponivelDesde?: number | null;
+  pausaAte?: number;
+  /** Benefícios do anfitrião pagos em celus. */
+  destaqueAte?: number;
+  campanhaAte?: number;
+  /** Catraca livre: locações seguidas sem supervisão desde a última conferência. */
+  semSupervisao?: number;
+  /** Mudança de título, foto ou descrição esperando a curadoria conferir (o anúncio segue no ar). */
+  revisar?: boolean;
 };
 
 export type Verificacao = 'nao_enviado' | 'em_analise' | 'verificado';
@@ -56,9 +66,15 @@ export type Usuario = {
   equipeCelus: boolean;
   albumPublico: boolean;
   criadoEm: number;
+  foto?: string;
+  bio?: string;
+  /** Benefício de anfitrião: comissão de 13% até esta data. */
+  comissaoReduzidaAte?: number;
+  /** Última forma de pagamento usada: vira a escolha padrão na próxima (pagar rápido). */
+  ultimoPagamento?: 'pix' | 'cartao';
 };
 
-export type StatusReserva = 'confirmada' | 'em_uso' | 'concluida' | 'cancelada' | 'solicitado' | 'aceito' | 'a_caminho';
+export type StatusReserva = 'confirmada' | 'em_uso' | 'concluida' | 'cancelada' | 'solicitado' | 'aceito' | 'a_caminho' | 'em_andamento' | 'recusado';
 
 export type Reserva = {
   id: string;
@@ -85,7 +101,17 @@ export type Reserva = {
   avaliadaPeloUsuario: boolean;
   avaliadaPeloAnfitriao: boolean;
   criadoEm: number;
+  /** Comissão da Celus no momento da reserva (padrão 15%). */
+  comissao?: number;
+  pagamento?: 'pix' | 'cartao';
+  avisoFimEnviado?: boolean;
+  /** Código de chegada (como o da Uber): conferido por quem recebe ou pelo profissional. */
+  chegadaConfirmada?: number;
+  tentativasCodigo?: number;
+  codigoTravado?: boolean;
 };
+
+export type Notificacao = { id: string; userId: string; t: number; txt: string; link?: string; lida: boolean };
 
 export type Avaliacao = {
   id: string; reservaId: string; autorId: string;

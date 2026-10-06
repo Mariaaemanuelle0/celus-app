@@ -264,7 +264,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 20px; height: 20px; f
 .axis p { margin: 2px 0 12px; font-size: 13.5px; color: var(--muted); }
 
 .live-wrap { position: sticky; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px)); z-index: 950; padding: 0 12px 8px; }
-main.cheio + .live-wrap { position: fixed; left: 50%; transform: translateX(-50%); width: min(100%, 480px); top: calc(var(--top-h) + env(safe-area-inset-top, 0px) + 120px); bottom: auto; }
+main.cheio + .live-wrap { position: fixed; left: 50%; transform: translateX(-50%); width: min(100%, 480px); bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px) + 104px); z-index: 1200; }
+.app:has(.folha.aberta) .live-wrap, .app:has(.folha-sel) .live-wrap, .app:has(.acao-fixa) .live-wrap, .app:has(.modal) .live-wrap { display: none; }
 .live { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 14px; border: 1px solid rgba(61,214,140,.4); background: rgba(10,22,24,.96); color: var(--text); text-decoration: none; font-weight: 600; font-size: 13.5px; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
 .live .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .live .dot, .dotlive { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(61,214,140,.2); flex: none; margin-right: 6px; animation: pulso 2s infinite; }
@@ -353,3 +354,52 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .etapas li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 32px; bottom: 4px; width: 1px; background: var(--line-2); }
 .etapas b { font-weight: 600; }
 .etapas span { color: var(--muted); font-size: 14px; }
+
+/* Pagamento */
+.metodos { display: flex; flex-direction: column; gap: 8px; }
+.metodo { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); }
+.metodo span { font-size: 13px; color: var(--muted); }
+.metodo[aria-checked="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.qr { display: grid; place-items: center; padding: 14px; background: #fff; border-radius: 16px; width: max-content; margin: 0 auto; }
+.copia { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 8px 8px 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
+.copia .num { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-2); }
+
+/* Sino de notificações */
+.sino { position: relative; margin-left: auto; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: var(--text-2); }
+.sino + .layer { margin-left: 4px; }
+.sino b { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 10.5px; display: grid; place-items: center; }
+.notifs { display: flex; flex-direction: column; }
+.notif { display: flex; gap: 12px; align-items: flex-start; padding: 14px 2px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 14.5px; }
+.notif .ponto { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex: none; background: var(--line-2); }
+.notif .ponto.novo { background: var(--accent); }
+
+/* Profissional: turno e chamados */
+.turno { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface); margin-bottom: 10px; }
+.turno.on { border-color: rgba(61,214,140,.45); background: linear-gradient(140deg, rgba(61,214,140,.1), var(--surface) 70%); }
+.chave { flex: none; width: 52px; height: 30px; border-radius: 15px; border: 0; background: var(--line-2); position: relative; padding: 0; transition: background .2s; }
+.chave i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.chave[aria-checked="true"] { background: var(--ok); }
+.chave[aria-checked="true"] i { transform: translateX(22px); }
+.chave:disabled { opacity: .4; }
+.chamado { padding: 14px; border-color: rgba(76,141,255,.4); }
+.conferir { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.conferir input { max-width: 120px; letter-spacing: .3em; text-align: center; font-size: 18px; }
+.codigo-chegada { margin-top: 14px; padding: 18px; border-radius: var(--r); border: 1px solid rgba(76,141,255,.4); background: radial-gradient(120% 120% at 100% 0%, rgba(76,141,255,.16), transparent 60%), var(--surface); }
+.codigo-chegada .code { font-size: 40px; letter-spacing: .25em; margin: 4px 0 6px; }
+.anuncio-meu { padding: 12px; }
+
+/* Anfitrião na página do anúncio */
+.anfitriao { display: flex; gap: 12px; align-items: flex-start; margin-top: 18px; padding: 14px; border-radius: var(--r); border: 1px solid var(--line); }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.avatar { overflow: hidden; }
+.avatar.mini { width: 42px; height: 42px; border-radius: 14px; font-size: 15px; }
+.avatar.grande { width: 88px; height: 88px; border-radius: 28px; font-size: 28px; }
+.selo { display: inline-flex; font-size: 11px; font-weight: 700; color: var(--accent-2); background: var(--accent-soft); padding: 1px 7px; border-radius: 999px; }
+.pin.dest { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(76,141,255,.3), 0 4px 12px rgba(0,0,0,.55); }
+
+/* Formulário de anúncio */
+.cats-grade { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.cats-grade .cat { justify-content: flex-start; }
+.fotoedit { position: relative; padding: 0; border: 0; background: none; }
+.fotoedit img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line-2); display: block; }
+.fotoedit span { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line-2); color: var(--text); display: grid; place-items: center; font-size: 14px; }

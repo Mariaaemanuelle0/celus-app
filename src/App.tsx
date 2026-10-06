@@ -5,8 +5,9 @@ import { ChatPage } from './pages/ChatPage';
 import { Entrar, Verificar } from './pages/Entrar';
 import { FeedPage, PostarStory } from './pages/FeedPage';
 import { MapPage } from './pages/MapPage';
-import { CelusPage, PerfilPage } from './pages/PerfilPage';
-import { Anunciar, AgendaPage, Curadoria, Painel } from './pages/Renda';
+import { CelusPage, EditarPerfil, PerfilPage } from './pages/PerfilPage';
+import { Anunciar, AgendaPage, Curadoria, EditarAnuncio, Painel } from './pages/Renda';
+import { Notificacoes } from './pages/Notificacoes';
 import { ReservaPage, UsoPage } from './pages/ReservaPage';
 import { useUsuario } from './store/db';
 
@@ -29,10 +30,13 @@ export default function App() {
           <Route path="feed" element={<FeedPage />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="perfil" element={<PerfilPage />} />
+          <Route path="perfil/editar" element={<EditarPerfil />} />
           <Route path="celus" element={<CelusPage />} />
+          <Route path="notificacoes" element={<Notificacoes />} />
           <Route path="renda" element={<Painel />} />
           <Route path="renda/anunciar" element={<Anunciar />} />
           <Route path="renda/agenda/:id" element={<AgendaPage />} />
+          <Route path="renda/editar/:id" element={<EditarAnuncio />} />
           <Route path="renda/curadoria" element={<Curadoria />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

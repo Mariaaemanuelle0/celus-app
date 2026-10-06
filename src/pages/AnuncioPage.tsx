@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ACESSO, CATEGORIAS, COMODIDADES, PROFISSOES } from '../data/catalogo';
-import type { Extra } from '../data/types';
+import type { Anuncio, Extra } from '../data/types';
 import { IconeCategoria, Miniatura, Moeda, Voltar, toast, useLocalizacao } from '../components/ui';
 import { StoryRing } from '../components/Stories';
 import { brl, rotuloHoras, virgula } from '../lib/format';
 import { distanciaKm, formatarDistancia } from '../lib/geo';
-import { SLOTS, TAXA_HORA, TAXA_SERVICO, slotDe } from '../lib/regras';
+import { SLOTS, TAXA_SERVICO, bloqueadoPorConferencia, jornada, slotDe, taxaUsuarioDe } from '../lib/regras';
+import { Pagamento as PagamentoModal } from '../components/Pagamento';
+import { emDestaque } from '../data/useAnuncios';
+import type { Pagamento } from '../store/acoes';
 import { COR_CSS, leitura } from '../lib/semaforo';
 import {
   alternarSonho, chamarProfissional, checkin, hhmm, podePostar, reservarDiaria, reservarHora, resgatar, storiesVisiveis,
@@ -38,6 +41,11 @@ export function AnuncioPage() {
   const [noites, setNoites] = useState(1);
   const [horas, setHoras] = useState(2);
   const [erro, setErro] = useState('');
+  const [pagando, setPagando] = useState(false);
+  const verificado = useDB((d) => d.usuarios[d.sessao ?? '']?.verificacao === 'verificado');
+  const [modoFicar, setModoFicar] = useState<'horas' | 'diarias'>('horas');
+  const dono = useDB((d) => (a ? d.usuarios[a.donoId] : undefined));
+  const anunciosDoDono = useDB((d) => d.anuncios);
 
   const denuncias = useDB((d) => d.denuncias);
   const meusStories = useMemo(() => storiesVisiveis(stories.filter((s) => s.anuncioId === id), denuncias).sort((x, y) => x.criado - y.criado), [stories, denuncias, id]);
@@ -50,30 +58,43 @@ export function AnuncioPage() {
   const salvo = sonhos.some((s) => s.userId === uid && s.anuncioId === a.id);
   const somaExtras = extras.reduce((s, e) => s + e.preco, 0);
   const pacote = a.pacotes?.[pacoteI];
+  const hibrido = a.tipoPreco === 'diaria' && !!a.pacotes?.length;
+  const tp: Anuncio['tipoPreco'] = hibrido && modoFicar === 'horas' ? 'pacote' : a.tipoPreco;
+  const taxa = tp === 'pacote' ? taxaUsuarioDe(a, 'hora') : 0;
   const pes = a.porPessoa ? pessoas : 1;
   const beneficiosAqui = beneficios.filter((b) => b.anuncioId === a.id);
   const dist = onde ? distanciaKm(onde, a) : null;
 
   const alternarExtra = (e: Extra) => setExtras(extras.some((x) => x.nome === e.nome) ? extras.filter((x) => x.nome !== e.nome) : [...extras, e]);
 
-  function reservar() {
+  /** Confere os dados antes de abrir o pagamento. */
+  function abrirPagamento() {
     setErro('');
-    if (a!.tipoPreco === 'pacote' && pacote) {
+    if (tp === 'pacote') {
       const inicio = quando === 'agora' ? Date.now() : Date.parse(dataHora);
       if (!inicio || Number.isNaN(inicio)) return setErro('Escolha a data e a hora.');
       if (inicio < Date.now() - 5 * 60_000) return setErro('Escolha um horário a partir de agora.');
-      const r = reservarHora(a!, pacote, pes, extras, inicio);
-      if (!r.ok) return setErro(r.erro);
-      toast('Reserva confirmada');
-      nav(`/reserva/${r.id}`);
-    } else if (a!.tipoPreco === 'diaria') {
-      const [y, m, d] = checkinData.split('-').map(Number);
-      const inicio = new Date(y, m - 1, d, 14, 0).getTime();
-      const r = reservarDiaria(a!, inicio, noites, pessoas, extras);
-      if (!r.ok) return setErro(r.erro);
-      toast('Reserva confirmada');
-      nav(`/reserva/${r.id}`);
     }
+    if (bloqueadoPorConferencia(a!)) return setErro('Este espaço está aguardando a conferência do anfitrião. Tente de novo mais tarde.');
+    setPagando(true);
+  }
+
+  function pagar(metodo: Pagamento) {
+    setPagando(false);
+    let r: { ok: true; id: string } | { ok: false; erro: string } | null = null;
+    if (tp === 'pacote' && pacote) {
+      const inicio = quando === 'agora' ? Date.now() : Date.parse(dataHora);
+      r = reservarHora(a!, pacote, pes, extras, inicio, metodo);
+    } else if (tp === 'diaria') {
+      const [y, m, d] = checkinData.split('-').map(Number);
+      r = reservarDiaria(a!, new Date(y, m - 1, d, 14, 0).getTime(), noites, pessoas, extras, metodo);
+    } else if (a!.categoria === 'servicos') {
+      r = chamarProfissional(a!, a!.unidadePreco === '/h' ? horas : 1, metodo);
+    }
+    if (!r) return;
+    if (!r.ok) return setErro(r.erro);
+    toast(a!.categoria === 'servicos' ? 'Chamado enviado' : 'Reserva confirmada');
+    nav(`/reserva/${r.id}`);
   }
 
   const horario = (() => {
@@ -81,8 +102,8 @@ export function AnuncioPage() {
     if (t.every((x) => x === t[0])) return t[0] === '00:00 às 24:00' ? 'Aberto 24 horas' : `Todos os dias, ${t[0]}`;
     return t.map((x, i) => `${DIAS[i]} ${x}`).join(', ');
   })();
-  const total = a.tipoPreco === 'pacote' && pacote ? pacote.preco * pes + TAXA_HORA + somaExtras
-    : a.tipoPreco === 'diaria' ? (a.preco ?? 0) * noites + somaExtras
+  const total = tp === 'pacote' && pacote ? pacote.preco * pes + taxa + somaExtras
+    : tp === 'diaria' ? (a.preco ?? 0) * noites + somaExtras
     : servico ? (a.preco ?? 0) * (a.unidadePreco === '/h' ? horas : 1) + TAXA_SERVICO : null;
   const temComod = Object.keys(COMODIDADES).filter((k) => a.comodidades.includes(k));
 
@@ -111,6 +132,28 @@ export function AnuncioPage() {
         </div>
       </div>
 
+      {(emDestaque(a) || (a.campanhaAte ?? 0) > Date.now()) && (
+        <div className="row" style={{ marginTop: 12 }}>
+          {emDestaque(a) && <span className="status aprovado">Em destaque</span>}
+          {(a.campanhaAte ?? 0) > Date.now() && <span className="status">Campanha Celus do mês</span>}
+        </div>
+      )}
+      {dono && (() => {
+        const deles = anunciosDoDono.filter((x) => x.donoId === dono.id && x.totalAvaliacoes > 0);
+        const n = deles.reduce((s2, x) => s2 + x.totalAvaliacoes, 0);
+        const media = n ? deles.reduce((s2, x) => s2 + ((x.notaQualidade + x.notaCustoBeneficio) / 2) * x.totalAvaliacoes, 0) / n : null;
+        return (
+          <div className="anfitriao">
+            <span className="avatar mini">{dono.foto ? <img src={dono.foto} alt="" /> : dono.nome.slice(0, 1)}</span>
+            <div className="sp" style={{ minWidth: 0 }}>
+              <b>{servico ? dono.nome.split(' ')[0] : `Anfitrião: ${dono.nome.split(' ')[0]}`}</b>
+              <div className="hint">{dono.verificacao === 'verificado' ? 'Identidade verificada' : 'Identidade não verificada'}{media ? `. Nota ${virgula(media)} em ${n} avaliações` : '. Ainda sem avaliações'}</div>
+              {dono.bio && <p className="desc" style={{ margin: '6px 0 0', fontSize: 14 }}>{dono.bio}</p>}
+            </div>
+          </div>
+        );
+      })()}
+
       {!servico && !imovel && (
         <div className="box storybox">
           {meusStories.length > 0 && <StoryRing lista={meusStories} rotulo={`${meusStories.length} agora`} cor={cat.cor} />}
@@ -136,7 +179,7 @@ export function AnuncioPage() {
             <div className="sumline"><span>Capacidade</span><span>até {a.capacidade} {a.capacidade > 1 ? 'pessoas' : 'pessoa'}</span></div>
             {a.tipoAcesso && <div className="sumline"><span>Acesso</span><span>{ACESSO[a.tipoAcesso]}</span></div>}
             {a.limpezaInclusa && <div className="sumline"><span>Limpeza</span><span>Inclusa</span></div>}
-            {a.tipoPreco === 'pacote' && <div className="sumline"><span>Funcionamento</span><span>{horario}</span></div>}
+            {tp === 'pacote' && <div className="sumline"><span>Funcionamento</span><span>{horario}</span></div>}
           </div>
         </>
       )}
@@ -153,15 +196,22 @@ export function AnuncioPage() {
         </>
       )}
 
+      {!servico && !imovel && bloqueadoPorConferencia(a) && <div className="alerta warn" style={{ marginTop: 18 }}><b>Aguardando conferência.</b> Depois de 5 locações seguidas sem ninguém no local, o anfitrião confere o espaço antes de liberar novas reservas.</div>}
       {!servico && !imovel && <SemaforoLocal a={a} marcas={marcas} />}
 
       <h2>{servico ? 'Como trabalha' : 'Manual de bons modos'}</h2>
       <div className="manual">{a.manualBonsModos}</div>
 
       {/* ---------- Reserva ---------- */}
-      {a.tipoPreco === 'pacote' && a.pacotes && (
+      {hibrido && (
         <>
-          <h2>Quanto tempo?</h2>
+          <h2>Por quanto tempo você quer ficar?</h2>
+          <div className="seg"><button aria-pressed={modoFicar === 'horas'} onClick={() => setModoFicar('horas')}>Algumas horas</button><button aria-pressed={modoFicar === 'diarias'} onClick={() => setModoFicar('diarias')}>Diárias</button></div>
+        </>
+      )}
+      {tp === 'pacote' && a.pacotes && (
+        <>
+          <h2>{hibrido ? 'Pacote' : 'Quanto tempo?'}</h2>
           <div className="pkgs">{a.pacotes.map((p, i) => (
             <button key={i} className="pkg" aria-pressed={pacoteI === i} onClick={() => setPacoteI(i)}><b>{rotuloHoras(p.horas)}</b><span className="coin">{brl(p.preco)}</span></button>
           ))}</div>
@@ -178,7 +228,7 @@ export function AnuncioPage() {
         </>
       )}
 
-      {a.tipoPreco === 'diaria' && (
+      {tp === 'diaria' && (
         <>
           <h2>Sua estadia</h2>
           <div className="grid2">
@@ -200,20 +250,22 @@ export function AnuncioPage() {
         </>
       )}
 
-      {(a.tipoPreco === 'pacote' || a.tipoPreco === 'diaria') && (
+      {(tp === 'pacote' || tp === 'diaria') && (
         <div className="box resumo">
-          {a.tipoPreco === 'pacote' && pacote && <div className="sumline"><span>Pacote {rotuloHoras(pacote.horas)}{pes > 1 ? ` × ${pes}` : ''}</span><span>{brl(pacote.preco * pes)}</span></div>}
-          {a.tipoPreco === 'diaria' && <div className="sumline"><span>{noites} diária{noites > 1 ? 's' : ''} × {brl(a.preco ?? 0)}</span><span>{brl((a.preco ?? 0) * noites)}</span></div>}
+          {tp === 'pacote' && pacote && <div className="sumline"><span>Pacote {rotuloHoras(pacote.horas)}{pes > 1 ? ` × ${pes}` : ''}</span><span>{brl(pacote.preco * pes)}</span></div>}
+          {tp === 'diaria' && <div className="sumline"><span>{noites} diária{noites > 1 ? 's' : ''} × {brl(a.preco ?? 0)}</span><span>{brl((a.preco ?? 0) * noites)}</span></div>}
           {extras.map((e) => <div key={e.nome} className="sumline"><span>{e.nome}</span><span>{brl(e.preco)}</span></div>)}
-          {a.tipoPreco === 'pacote' && <div className="sumline"><span>Taxa de serviço</span><span>{brl(TAXA_HORA)}</span></div>}
-          <div className="sumline"><span>Total</span><span>{brl((a.tipoPreco === 'pacote' && pacote ? pacote.preco * pes + TAXA_HORA : (a.preco ?? 0) * noites) + somaExtras)}</span></div>
+          {tp === 'pacote' && taxa > 0 && <div className="sumline"><span>Taxa de serviço</span><span>{brl(taxa)}</span></div>}
+          <div className="sumline"><span>Total</span><span>{brl((tp === 'pacote' && pacote ? pacote.preco * pes + taxa : (a.preco ?? 0) * noites) + somaExtras)}</span></div>
         </div>
       )}
 
       {servico && (
         <>
-          <div className="alerta ok" style={{ marginTop: 18 }}><b>Disponível agora</b>{dist != null ? ` a ${formatarDistancia(dist)} de você` : ''}. Freelancer: fica no máximo 12 h seguidas disponível e depois faz pausa de 6 h.</div>
-          {a.unidadePreco === '/h' && (
+          {jornada(a).disponivel
+            ? <div className="alerta ok" style={{ marginTop: 18 }}><b>Disponível agora</b>{dist != null ? ` a ${formatarDistancia(dist)} de você` : ''}. Freelancer: fica no máximo 12 h seguidas disponível e depois faz pausa de 6 h.</div>
+            : <div className="alerta warn" style={{ marginTop: 18 }}><b>Indisponível agora.</b> Este profissional está fora do horário ou na pausa obrigatória.</div>}
+                    {a.unidadePreco === '/h' && (
             <label className="campo" style={{ marginTop: 12 }}>Por quantas horas?
               <select id="r-horas" value={horas} onChange={(e) => setHoras(Number(e.target.value))}>{[1, 2, 3, 4, 5, 6, 8].map((n) => <option key={n}>{n}</option>)}</select>
             </label>
@@ -226,14 +278,18 @@ export function AnuncioPage() {
         </>
       )}
 
+      {a.categoria === 'ficar' && !verificado && <Link to="/verificar" className="alerta warn" style={{ display: 'block', marginTop: 14, color: 'var(--text)', textDecoration: 'none' }}><b>Verifique sua identidade</b> para reservar no Ficar. Leva um minuto.</Link>}
       {erro && <p className="erro" role="alert" style={{ marginTop: 12 }}>{erro}</p>}
-      {(a.tipoPreco === 'pacote' || servico || a.tipoPreco === 'diaria') && <p className="hint" style={{ marginTop: 10 }}>Pagamento em modo de teste: nenhuma cobrança real é feita.</p>}
+      {(tp === 'pacote' || servico || tp === 'diaria') && <p className="hint" style={{ marginTop: 10 }}>Pagamento em modo de teste: nenhuma cobrança real é feita.</p>}
       {a.donoId === uid && <p className="hint" style={{ marginTop: 10 }}>Este anúncio é seu.</p>}
+      {pagando && total != null && <PagamentoModal total={total} titulo={a.titulo} onPagar={pagar} onFechar={() => setPagando(false)} />}
       {a.donoId !== uid && (
         <div className="acao-fixa">
           {total != null && <div className="acao-total"><span className="hint">Total</span><b className="num">{brl(total)}</b></div>}
-          {(a.tipoPreco === 'pacote' || a.tipoPreco === 'diaria') && <button className="btn" onClick={reservar}>Confirmar e pagar</button>}
-          {servico && <button className="btn" onClick={() => { const rid = chamarProfissional(a, a.unidadePreco === '/h' ? horas : 1); if (rid) nav(`/reserva/${rid}`); }}>Chamar {a.titulo.split(',')[0]}</button>}
+          {(tp === 'pacote' || tp === 'diaria') && <button className="btn" onClick={abrirPagamento}>Confirmar e pagar</button>}
+          {servico && (jornada(a).disponivel
+            ? <button className="btn" onClick={abrirPagamento}>Chamar {a.titulo.split(',')[0]}</button>
+            : <button className="btn" disabled>Indisponível agora</button>)}
           {imovel && <button className="btn" onClick={() => toast('Interesse enviado. O corretor responsável entra em contato pela plataforma.')}>Tenho interesse</button>}
         </div>
       )}

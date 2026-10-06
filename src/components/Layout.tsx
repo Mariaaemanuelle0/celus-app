@@ -40,6 +40,16 @@ function EmUso() {
   );
 }
 
+function Sino() {
+  const n = useDB((d) => d.notificacoes.filter((x) => x.userId === d.sessao && !x.lida).length);
+  return (
+    <Link to="/notificacoes" className="sino" aria-label={n ? `Notificações, ${n} novas` : 'Notificações'}>
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>
+      {n > 0 && <b>{n > 9 ? '9+' : n}</b>}
+    </Link>
+  );
+}
+
 export function Layout() {
   const u = useUsuario();
   const loc = useLocation();
@@ -54,6 +64,7 @@ export function Layout() {
       <div className="app">
         <header className="top">
           <Link to="/" className="logo" aria-label="Celus, início"><Marca /><span>Celus</span></Link>
+          <Sino />
           <div className="layer" role="group" aria-label="Camada">
             <button aria-pressed={!renda} onClick={() => nav('/')}>Procurar</button>
             <button aria-pressed={renda} onClick={() => nav('/renda')}>Rentabilizar</button>

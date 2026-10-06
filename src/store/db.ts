@@ -2,7 +2,7 @@
 // Quando o Supabase for ligado, estas ações passam a chamar o servidor; as telas não mudam.
 import { useSyncExternalStore } from 'react';
 import type {
-  Anuncio, Avaliacao, Beneficio, Carteira, Denuncia, MarcaSemaforo, MensagemChat, Reserva, Story, Usuario,
+  Anuncio, Avaliacao, Beneficio, Carteira, Denuncia, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Usuario,
 } from '../data/types';
 import { anunciosFicticios } from '../data/seed';
 import { centroPiloto } from '../lib/geo';
@@ -24,6 +24,7 @@ export type DB = {
   carteiras: Record<string, Carteira>;
   beneficios: Beneficio[];
   denuncias: Denuncia[];
+  notificacoes: Notificacao[];
 };
 
 const CHAVE = 'celus-db-v1';
@@ -57,6 +58,7 @@ function inicial(): DB {
       { id: 'b-campa', grupo: 'anfitriao', nome: 'Entrar na campanha Celus do mês', desc: 'Seu espaço aparece nos posts e eventos da campanha.', custo: 250 },
     ],
     denuncias: [],
+    notificacoes: [],
   };
 }
 
@@ -65,7 +67,11 @@ function carregar(): DB {
     const raw = localStorage.getItem(CHAVE);
     if (raw) {
       const db = JSON.parse(raw) as DB;
-      if (db.versao === 1) return db;
+      if (db.versao === 1) {
+        db.notificacoes ??= [];
+        for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
+        return db;
+      }
     }
   } catch { /* armazenamento indisponível: começa do zero */ }
   return inicial();
@@ -128,3 +134,10 @@ export function ganhar(d: DB, userId: string, chave: string, txt: string, vezes 
 }
 
 export const centroInicial = centroPiloto;
+
+/* ---------- Notificações dentro do app ---------- */
+export function notificar(d: DB, userId: string | undefined, txt: string, link?: string) {
+  if (!userId || userId === 'celus-demo' || userId.startsWith('demo-')) return;
+  d.notificacoes.unshift({ id: novoId(), userId, t: Date.now(), txt, link, lida: false });
+  if (d.notificacoes.length > 300) d.notificacoes.length = 300;
+}

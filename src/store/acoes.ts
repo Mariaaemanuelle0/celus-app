@@ -1,9 +1,20 @@
 import type { Anuncio, Extra, Pacote, Reserva } from '../data/types';
 import { distanciaKm, type Ponto } from '../lib/geo';
 import {
-  CHAT_MS, IDADE_MINIMA, STORY_MS, TAXA_HORA, TAXA_SERVICO, celulaSemaforo, cobranca, idade, moderar, reembolso, slotDe,
+  CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
+  bloqueadoPorConferencia, celulaSemaforo, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
-import { carteiraDe, ganhar, ler, mudar, novoId } from './db';
+import { carteiraDe, ganhar, ler, mudar, notificar, novoId, type DB } from './db';
+
+const DIA = 86_400_000;
+const quandoTxt = (t: number) => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/** Comissão que vale para uma reserva nova deste anúncio (13% se o anfitrião trocou celus pelo desconto). */
+function comissaoAtual(d: DB, a: Anuncio): number {
+  const dono = d.usuarios[a.donoId];
+  return dono?.comissaoReduzidaAte && dono.comissaoReduzidaAte > Date.now() ? COMISSAO_REDUZIDA : COMISSAO;
+}
+export type Pagamento = 'pix' | 'cartao';
 
 async function hash(txt: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('celus:' + txt));
@@ -84,23 +95,32 @@ export function fimPrevisto(r: Reserva, a: Anuncio): number {
 }
 
 /* ---------- Reservas ---------- */
-const codigo = () => String(Math.floor(100000 + Math.random() * 900000));
+const codigo = () => String(Math.floor(1000 + Math.random() * 9000));
 
-export function reservarHora(a: Anuncio, pacote: Pacote, pessoas: number, extras: Extra[], inicio: number): { ok: true; id: string } | { ok: false; erro: string } {
+const AGUARDANDO_CONFERENCIA = 'Este espaço está aguardando a conferência do anfitrião. Tente de novo mais tarde.';
+
+export function reservarHora(a: Anuncio, pacote: Pacote, pessoas: number, extras: Extra[], inicio: number, pagamento: Pagamento = 'pix'): { ok: true; id: string } | { ok: false; erro: string } {
   const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (bloqueadoPorConferencia(a)) return { ok: false, erro: AGUARDANDO_CONFERENCIA };
+  if (a.categoria === 'ficar' && ler().usuarios[uid]?.verificacao !== 'verificado') return { ok: false, erro: 'Para reservar no Ficar, verifique sua identidade primeiro.' };
   const fim = inicio + pacote.horas * 3600_000;
   const erro = checarDisponibilidade(a, inicio, fim, pessoas);
   if (erro) return { ok: false, erro };
   const subtotal = pacote.preco * pessoas + extras.reduce((s, e) => s + e.preco, 0);
   const id = novoId();
   mudar((d) => {
-    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'hora', status: 'confirmada', inicio, pacote, pessoas, extras, extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: TAXA_HORA, multa: 0, total: subtotal + TAXA_HORA, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now() });
+    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'hora', status: 'confirmada', inicio, pacote, pessoas, extras, extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: taxaUsuarioDe(a, 'hora'), multa: 0, total: subtotal + taxaUsuarioDe(a, 'hora'), codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now(), comissao: comissaoAtual(d, a), pagamento });
+    d.usuarios[uid].ultimoPagamento = pagamento;
+    notificar(d, uid, `Reserva confirmada: ${a.titulo}, ${quandoTxt(inicio)}.`, `/reserva/${id}`);
+    notificar(d, a.donoId, `Nova reserva em ${a.titulo} para ${quandoTxt(inicio)}.`, '/renda');
   });
   return { ok: true, id };
 }
 
-export function reservarDiaria(a: Anuncio, checkin: number, noites: number, pessoas: number, extras: Extra[]): { ok: true; id: string } | { ok: false; erro: string } {
+export function reservarDiaria(a: Anuncio, checkin: number, noites: number, pessoas: number, extras: Extra[], pagamento: Pagamento = 'pix'): { ok: true; id: string } | { ok: false; erro: string } {
   const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (bloqueadoPorConferencia(a)) return { ok: false, erro: AGUARDANDO_CONFERENCIA };
+  if (a.categoria === 'ficar' && ler().usuarios[uid]?.verificacao !== 'verificado') return { ok: false, erro: 'Para reservar no Ficar, verifique sua identidade primeiro.' };
   const fim = checkin + noites * 86_400_000;
   if (pessoas > a.capacidade) return { ok: false, erro: `Capacidade máxima: ${a.capacidade} pessoas.` };
   const erro = checarDisponibilidade(a, checkin, fim, pessoas);
@@ -108,25 +128,95 @@ export function reservarDiaria(a: Anuncio, checkin: number, noites: number, pess
   const subtotal = (a.preco ?? 0) * noites + extras.reduce((s, e) => s + e.preco, 0);
   const id = novoId();
   mudar((d) => {
-    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'diaria', status: 'confirmada', inicio: checkin, noites, pessoas, extras, extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: 0, multa: 0, total: subtotal, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now() });
+    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'diaria', status: 'confirmada', inicio: checkin, noites, pessoas, extras, extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: 0, multa: 0, total: subtotal, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now(), comissao: comissaoAtual(d, a), pagamento });
+    d.usuarios[uid].ultimoPagamento = pagamento;
+    notificar(d, uid, `Estadia confirmada: ${a.titulo}, check-in ${quandoTxt(checkin)}.`, `/reserva/${id}`);
+    notificar(d, a.donoId, `Nova estadia em ${a.titulo}: ${noites} diária${noites > 1 ? 's' : ''} a partir de ${quandoTxt(checkin)}.`, '/renda');
   });
   return { ok: true, id };
 }
 
-export function chamarProfissional(a: Anuncio, horas: number): string | null {
-  const uid = sessao(); if (!uid) return null;
+export function chamarProfissional(a: Anuncio, horas: number, pagamento: Pagamento = 'pix'): { ok: true; id: string } | { ok: false; erro: string } {
+  const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  if (!jornada(a).disponivel) return { ok: false, erro: 'Este profissional não está disponível agora.' };
+  if (ler().reservas.some((r) => r.anuncioId === a.id && ['solicitado', 'aceito', 'a_caminho'].includes(r.status))) return { ok: false, erro: 'Este profissional já está atendendo um chamado. Tente outro ou aguarde.' };
   const id = novoId();
   const subtotal = (a.preco ?? 0) * horas;
   mudar((d) => {
-    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'servico', status: 'solicitado', inicio: Date.now(), horasServico: horas, pessoas: 1, extras: [], extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: TAXA_SERVICO, multa: 0, total: subtotal + TAXA_SERVICO, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now() });
+    d.reservas.unshift({ id, anuncioId: a.id, userId: uid, tipo: 'servico', status: 'solicitado', inicio: Date.now(), horasServico: horas, pessoas: 1, extras: [], extensoes: 0, minutosTeste: 0, subtotal, taxaUsuario: TAXA_SERVICO, multa: 0, total: subtotal + TAXA_SERVICO, codigo: codigo(), avaliadaPeloUsuario: false, avaliadaPeloAnfitriao: false, criadoEm: Date.now(), comissao: comissaoAtual(d, a), pagamento });
+    d.usuarios[uid].ultimoPagamento = pagamento;
+    notificar(d, a.donoId, `Novo chamado de ${d.usuarios[uid]?.nome.split(' ')[0] ?? 'cliente'}: ${brlTxt(subtotal)}. Aceite ou recuse.`, '/renda');
   });
-  return id;
+  return { ok: true, id };
 }
 
-export const avancarChamado = (id: string, status: Reserva['status']) =>
-  mudar((d) => { const r = d.reservas.find((x) => x.id === id); if (r) { r.status = status; if (status === 'concluida') { r.fim = Date.now(); ganhar(d, r.userId, 'reserva', `Serviço de ${brlTxt(r.total)}`, Math.floor(r.total / 10)); } } });
+const AVISO_CHAMADO: Partial<Record<Reserva['status'], string>> = {
+  aceito: 'aceitou seu chamado', a_caminho: 'está a caminho. Quando chegar, diga o seu código', em_andamento: 'começou o serviço', recusado: 'não pode atender agora. Você não paga nada', concluida: 'marcou o serviço como concluído',
+};
 
-export const iniciarUso = (id: string) => mudar((d) => { const r = d.reservas.find((x) => x.id === id); if (r && r.status === 'confirmada') { r.status = 'em_uso'; r.usoInicio = Date.now(); } });
+export const avancarChamado = (id: string, status: Reserva['status']) =>
+  mudar((d) => {
+    const r = d.reservas.find((x) => x.id === id); if (!r) return;
+    const a = d.anuncios.find((x) => x.id === r.anuncioId);
+    r.status = status;
+    if (status === 'recusado') r.reembolso = r.total;
+    if (status === 'concluida') { r.fim = Date.now(); ganhar(d, r.userId, 'reserva', `Serviço de ${brlTxt(r.total)}`, Math.floor(r.total / 10)); notificar(d, a?.donoId, `Serviço concluído. Avalie ${d.usuarios[r.userId]?.nome.split(' ')[0] ?? 'o cliente'}.`, '/renda'); }
+    const aviso = AVISO_CHAMADO[status];
+    if (aviso && a) notificar(d, r.userId, `${a.titulo.split(',')[0]} ${aviso}.`, `/reserva/${r.id}`);
+  });
+
+/** Profissional liga ou desliga o "disponível agora". */
+export function alternarDisponivel(anuncioId: string): Resultado {
+  const a = ler().anuncios.find((x) => x.id === anuncioId); if (!a) return falha('Anúncio não encontrado.');
+  const j = jornada(a);
+  if (!j.disponivel && j.pausaMin > 0) return falha(`Pausa obrigatória: você volta em ${Math.ceil(j.pausaMin / 60)} h.`);
+  mudar((d) => {
+    const x = d.anuncios.find((y) => y.id === anuncioId)!;
+    if (j.disponivel) { x.disponivelDesde = null; }
+    else { x.disponivelDesde = Date.now(); x.pausaAte = undefined; }
+  });
+  return { ok: true };
+}
+
+/** Com fechadura digital, o código abre a porta e a própria pessoa inicia o uso. */
+export const iniciarUso = (id: string) => mudar((d) => {
+  const r = d.reservas.find((x) => x.id === id); if (!r || r.status !== 'confirmada') return;
+  const a = d.anuncios.find((x) => x.id === r.anuncioId);
+  if (a?.tipoAcesso !== 'fechadura' && !r.chegadaConfirmada) return;
+  r.status = 'em_uso'; r.usoInicio = Date.now();
+});
+
+const MAX_TENTATIVAS = 5;
+
+/** Quem recebe (anfitrião ou profissional) digita o código que a pessoa mostra. Só assim o uso ou o serviço começa. */
+export function confirmarChegada(reservaId: string, digitado: string, demo = false): Resultado {
+  const d0 = ler(); const uid = d0.sessao;
+  const r = d0.reservas.find((x) => x.id === reservaId); if (!r) return falha('Reserva não encontrada.');
+  const a = d0.anuncios.find((x) => x.id === r.anuncioId); if (!a) return falha('Anúncio não encontrado.');
+  if (!demo && a.donoId !== uid) return falha('Só quem recebe pode conferir o código.');
+  if (demo && a.donoId !== 'celus-demo') return falha('Só para anúncios de demonstração.');
+  if (r.codigoTravado) return falha('Conferência travada depois de muitas tentativas. A equipe Celus foi avisada.');
+  if (digitado.trim() !== r.codigo) {
+    mudar((d) => {
+      const x = d.reservas.find((y) => y.id === reservaId)!;
+      x.tentativasCodigo = (x.tentativasCodigo ?? 0) + 1;
+      if (x.tentativasCodigo >= MAX_TENTATIVAS) { x.codigoTravado = true; notificar(d, x.userId, 'A conferência do seu código travou depois de muitas tentativas erradas. A equipe Celus vai verificar.', `/reserva/${x.id}`); }
+    });
+    const resta = MAX_TENTATIVAS - ((r.tentativasCodigo ?? 0) + 1);
+    return falha(resta > 0 ? `Código errado. Restam ${resta} tentativa${resta > 1 ? 's' : ''}.` : 'Código errado. Conferência travada e equipe Celus avisada.');
+  }
+  mudar((d) => {
+    const x = d.reservas.find((y) => y.id === reservaId)!;
+    x.chegadaConfirmada = Date.now();
+    if (x.tipo === 'hora' && x.status === 'confirmada') { x.status = 'em_uso'; x.usoInicio = Date.now(); }
+    if (x.tipo === 'servico' && x.status === 'a_caminho') x.status = 'em_andamento';
+    notificar(d, x.userId, x.tipo === 'servico' ? 'Código conferido. O serviço começou.' : x.tipo === 'hora' ? 'Código conferido. Seu tempo começou a contar.' : 'Check-in confirmado. Boa estadia.', x.tipo === 'hora' ? `/uso/${x.id}` : `/reserva/${x.id}`);
+  });
+  return { ok: true };
+}
+
+/** Curadoria libera uma conferência travada. */
+export const destravarCodigo = (reservaId: string) => mudar((d) => { const r = d.reservas.find((x) => x.id === reservaId); if (r) { r.codigoTravado = false; r.tentativasCodigo = 0; } });
 export const estender = (id: string) => mudar((d) => { const r = d.reservas.find((x) => x.id === id); if (r) r.extensoes++; });
 export const avancarTeste = (id: string, min: number) => mudar((d) => { const r = d.reservas.find((x) => x.id === id); if (r) r.minutosTeste += min; });
 
@@ -142,6 +232,23 @@ export function encerrar(id: string) {
     }
     r.status = 'concluida'; r.fim = Date.now();
     ganhar(d, r.userId, 'reserva', `Reserva de ${brlTxt(r.total)} em ${a.titulo}`, Math.floor(r.total / 10));
+    notificar(d, a.donoId, `${d.usuarios[r.userId]?.nome.split(' ')[0] ?? 'O hóspede'} saiu de ${a.titulo}. Avalie com estrelas.`, '/renda');
+    if (precisaSupervisao(a)) {
+      a.semSupervisao = (a.semSupervisao ?? 0) + 1;
+      if (a.semSupervisao >= LIMITE_SEM_SUPERVISAO) notificar(d, a.donoId, `${a.titulo} teve ${LIMITE_SEM_SUPERVISAO} locações seguidas sem ninguém conferir. Confira o espaço para liberar novas reservas.`, '/renda');
+    }
+  });
+}
+
+/** Anfitrião (ou verificador) conferiu o espaço: zera a contagem da catraca livre. */
+export const conferirEspaco = (anuncioId: string) => mudar((d) => { const a = d.anuncios.find((x) => x.id === anuncioId); if (a) a.semSupervisao = 0; });
+
+/** Aviso de 20 minutos, registrado uma vez por reserva. */
+export function avisarFim(reservaId: string, minutos: number) {
+  mudar((d) => {
+    const r = d.reservas.find((x) => x.id === reservaId); if (!r || r.avisoFimEnviado) return;
+    r.avisoFimEnviado = true;
+    notificar(d, r.userId, `Faltam ${minutos} minutos na sua reserva. Estenda com um toque se precisar.`, `/uso/${r.id}`);
   });
 }
 
@@ -151,6 +258,8 @@ export function cancelar(id: string): number {
     const r = d.reservas.find((x) => x.id === id); if (!r) return;
     valor = reembolso(r).valor;
     r.status = 'cancelada'; r.reembolso = valor;
+    const a = d.anuncios.find((x) => x.id === r.anuncioId);
+    notificar(d, a?.donoId, `Reserva cancelada em ${a?.titulo ?? 'seu anúncio'} (${quandoTxt(r.inicio)}).`, '/renda');
   });
   return valor;
 }
@@ -166,6 +275,7 @@ export function avaliarAnuncio(reservaId: string, qualidade: number, custoBenefi
     r.avaliadaPeloUsuario = true;
     d.avaliacoes.push({ id: novoId(), reservaId, autorId: r.userId, alvo: 'anuncio', alvoId: a.id, qualidade, custoBeneficio, devolveu, criadoEm: Date.now() });
     ganhar(d, r.userId, 'avaliar', `Você avaliou ${a.titulo}`);
+    notificar(d, a.donoId, `${a.titulo} recebeu uma avaliação nova.`, '/renda');
   });
 }
 
@@ -177,6 +287,7 @@ export function avaliarHospede(reservaId: string, nota: number) {
     d.avaliacoes.push({ id: novoId(), reservaId, autorId: a?.donoId ?? '', alvo: 'usuario', alvoId: r.userId, nota, criadoEm: Date.now() });
     if (nota === 5) ganhar(d, r.userId, 'aval5', `Avaliação 5 estrelas de ${a?.titulo ?? 'anfitrião'}`);
     if (nota === 4) ganhar(d, r.userId, 'aval4', `Avaliação 4 estrelas de ${a?.titulo ?? 'anfitrião'}`);
+    notificar(d, r.userId, `Você recebeu ${nota} estrela${nota > 1 ? 's' : ''} de ${a?.titulo ?? 'um anfitrião'}.`, '/perfil');
   });
 }
 
@@ -286,8 +397,34 @@ export function resgatar(beneficioId: string): string | null {
     const a = b.anuncioId ? d.anuncios.find((x) => x.id === b.anuncioId) : null;
     c.vales.unshift({ nome: b.nome, onde: a ? a.titulo : b.grupo === 'evento' ? 'Evento Celus' : 'No app', codigo: cod, t: Date.now() });
     d.carteiras[uid] = c;
+    if (a) notificar(d, a.donoId, `Alguém trocou celus por "${b.nome}" em ${a.titulo}. Código ${cod}: confira na entrega.`, '/renda');
   });
   return cod;
+}
+
+/** Benefícios de quem anuncia: têm efeito real no app. */
+export function resgatarAnfitriao(tipo: 'destaque' | 'comissao' | 'campanha', anuncioId?: string): Resultado {
+  const d0 = ler(); const uid = d0.sessao; if (!uid) return falha('Entre na sua conta.');
+  const id = { destaque: 'b-dest', comissao: 'b-com', campanha: 'b-campa' }[tipo];
+  const b = d0.beneficios.find((x) => x.id === id); if (!b) return falha('Benefício indisponível.');
+  if (carteiraDe(d0, uid).saldo < b.custo) return falha('Saldo de celus insuficiente.');
+  const meus = d0.anuncios.filter((a) => a.donoId === uid && a.status === 'aprovado');
+  if (!meus.length) return falha('Você precisa de um anúncio publicado no mapa.');
+  const alvo = anuncioId ? meus.find((a) => a.id === anuncioId) : meus[0];
+  if (tipo !== 'comissao' && !alvo) return falha('Escolha um anúncio seu.');
+  const u = d0.usuarios[uid];
+  if (tipo === 'comissao' && u.comissaoReduzidaAte && Date.now() < u.comissaoReduzidaAte) return falha('Sua comissão já está reduzida. Dá para usar de novo quando o prazo acabar.');
+  mudar((d) => {
+    const c = carteiraDe(d, uid);
+    c.saldo -= b.custo;
+    c.hist.unshift({ t: Date.now(), txt: 'Resgate: ' + b.nome, v: -b.custo });
+    d.carteiras[uid] = c;
+    const a = alvo && d.anuncios.find((x) => x.id === alvo.id);
+    if (tipo === 'destaque' && a) a.destaqueAte = Math.max(Date.now(), a.destaqueAte ?? 0) + DIA;
+    if (tipo === 'campanha' && a) { const f = new Date(); a.campanhaAte = new Date(f.getFullYear(), f.getMonth() + 1, 1).getTime(); }
+    if (tipo === 'comissao') d.usuarios[uid].comissaoReduzidaAte = Date.now() + 30 * DIA;
+  });
+  return { ok: true };
 }
 
 export function criarBeneficio(anuncioId: string, nome: string, custo: number) {
@@ -305,7 +442,30 @@ export function criarAnuncio(a: Omit<Anuncio, 'id' | 'donoId' | 'status' | 'nota
   return id;
 }
 
-export const decidirAnuncio = (id: string, status: 'aprovado' | 'recusado') => mudar((d) => { const a = d.anuncios.find((x) => x.id === id); if (a) a.status = status; });
+export const decidirAnuncio = (id: string, status: 'aprovado' | 'recusado') => mudar((d) => {
+  const a = d.anuncios.find((x) => x.id === id); if (!a) return;
+  a.status = status;
+  notificar(d, a.donoId, status === 'aprovado' ? `${a.titulo} foi aprovado e já está no mapa.` : `${a.titulo} não foi aprovado. Revise as fotos e o texto e envie de novo.`, '/renda');
+});
+
+export const conferirRevisao = (id: string, manter: boolean) => mudar((d) => {
+  const a = d.anuncios.find((x) => x.id === id); if (!a) return;
+  a.revisar = false;
+  if (!manter) { a.status = 'pausado'; notificar(d, a.donoId, `As mudanças em ${a.titulo} não foram aprovadas. O anúncio foi pausado até você corrigir.`, '/renda'); }
+});
+
+type DadosAnuncio = Omit<Anuncio, 'id' | 'donoId' | 'status' | 'notaQualidade' | 'notaCustoBeneficio' | 'totalAvaliacoes' | 'totalSonhos' | 'criadoEm' | 'agenda' | 'lat' | 'lng'>;
+
+/** Edita um anúncio. Preço e extras valem só para as próximas reservas; título, fotos e descrição passam pela curadoria. */
+export function editarAnuncio(id: string, dados: DadosAnuncio) {
+  mudar((d) => {
+    const a = d.anuncios.find((x) => x.id === id); if (!a || a.donoId !== d.sessao) return;
+    const mudouVitrine = a.titulo !== dados.titulo || a.descricao !== dados.descricao || JSON.stringify(a.fotos) !== JSON.stringify(dados.fotos);
+    Object.assign(a, dados);
+    if (mudouVitrine && a.status === 'aprovado') a.revisar = true;
+    if (a.status === 'recusado') a.status = 'pendente';
+  });
+}
 export const pausarAnuncio = (id: string) => mudar((d) => { const a = d.anuncios.find((x) => x.id === id); if (a) a.status = a.status === 'pausado' ? 'aprovado' : 'pausado'; });
 export const salvarAgenda = (id: string, agenda: Anuncio['agenda']) => mudar((d) => { const a = d.anuncios.find((x) => x.id === id); if (a) a.agenda = agenda; });
 
@@ -315,3 +475,11 @@ export { cobranca };
 export function storiesVisiveis(stories: import('../data/types').Story[], denuncias: import('../data/types').Denuncia[]) {
   return storiesAtivos(stories).filter((s) => !denuncias.some((d) => d.storyId === s.id && d.por === 'Usuário')) as import('../data/types').Story[];
 }
+
+/* ---------- Perfil e notificações ---------- */
+export function atualizarPerfil(dados: { foto?: string; bio: string }) {
+  const id = sessao(); if (!id) return;
+  mudar((d) => { const u = d.usuarios[id]; if (dados.foto !== undefined) u.foto = dados.foto || undefined; u.bio = dados.bio.trim().slice(0, 160) || undefined; });
+}
+
+export const marcarLidas = () => { const id = sessao(); if (id) mudar((d) => { d.notificacoes.forEach((n) => { if (n.userId === id) n.lida = true; }); }); };

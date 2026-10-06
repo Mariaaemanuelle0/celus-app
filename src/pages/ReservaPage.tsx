@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ACESSO, CATEGORIAS } from '../data/catalogo';
+import { CATEGORIAS } from '../data/catalogo';
 import { Estrelas, Voltar, toast, useAgora } from '../components/ui';
 import { brl, rotuloHoras } from '../lib/format';
 import { AVISO_MIN, CARENCIA_MIN, cobranca, reembolso } from '../lib/regras';
-import { avaliarAnuncio, avancarChamado, avancarTeste, cancelar, encerrar, estender, iniciarUso } from '../store/acoes';
+import { avaliarAnuncio, avancarChamado, avancarTeste, avisarFim, cancelar, confirmarChegada, encerrar, estender, iniciarUso } from '../store/acoes';
 import { useDB } from '../store/db';
 
 const dataHora = (t: number) => new Date(t).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-const STATUS: Record<string, string> = { confirmada: 'Confirmada', em_uso: 'Em uso', concluida: 'Concluída', cancelada: 'Cancelada', solicitado: 'Chamado enviado', aceito: 'Aceito', a_caminho: 'A caminho' };
+const STATUS: Record<string, string> = { confirmada: 'Confirmada', em_uso: 'Em uso', concluida: 'Concluída', cancelada: 'Cancelada', solicitado: 'Chamado enviado', aceito: 'Aceito', a_caminho: 'A caminho', em_andamento: 'Em atendimento', recusado: 'Recusado' };
+const PASSOS = ['solicitado', 'aceito', 'a_caminho', 'em_andamento'];
 
 export function ReservaPage() {
   const { id } = useParams();
@@ -17,12 +18,13 @@ export function ReservaPage() {
   const a = useDB((d) => d.anuncios.find((x) => x.id === r?.anuncioId));
   const [confirmarCancel, setConfirmarCancel] = useState(false);
 
-  // Modo demonstração: o profissional aceita e sai a caminho sozinho.
+  const demo = a?.donoId === 'celus-demo';
+  // Modo demonstração: profissionais fictícios aceitam e saem a caminho sozinhos. Profissionais reais respondem pelo Rentabilizar.
   useEffect(() => {
-    if (!r || r.tipo !== 'servico') return;
+    if (!r || r.tipo !== 'servico' || !demo) return;
     if (r.status === 'solicitado') { const t = setTimeout(() => avancarChamado(r.id, 'aceito'), 4000); return () => clearTimeout(t); }
     if (r.status === 'aceito') { const t = setTimeout(() => avancarChamado(r.id, 'a_caminho'), 4000); return () => clearTimeout(t); }
-  }, [r]);
+  }, [r, demo]);
 
   if (!r || !a) return <div className="empty">Reserva não encontrada.</div>;
   if (r.status === 'em_uso') return <Navigate to={`/uso/${r.id}`} replace />;
@@ -42,19 +44,31 @@ export function ReservaPage() {
         {r.tipo === 'servico' && `Chamado às ${new Date(r.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
       </p>
 
-      {r.tipo === 'servico' && ['solicitado', 'aceito', 'a_caminho'].includes(r.status) && (
+      {r.tipo === 'servico' && PASSOS.includes(r.status) && (
         <div className="passos">
-          {['solicitado', 'aceito', 'a_caminho'].map((s, i) => (
-            <div key={s} className={`passo ${['solicitado', 'aceito', 'a_caminho'].indexOf(r.status) >= i ? 'on' : ''}`}><i />{STATUS[s]}</div>
+          {PASSOS.map((s, i) => (
+            <div key={s} className={`passo ${PASSOS.indexOf(r.status) >= i ? 'on' : ''}`}><i />{STATUS[s]}</div>
           ))}
         </div>
       )}
+      {r.status === 'recusado' && <div className="alerta warn" style={{ marginTop: 14 }}>O profissional não pode atender agora. Você não paga nada. Procure outro no mapa.</div>}
 
-      {r.status === 'confirmada' && (
-        <div className="box" style={{ padding: 14, marginTop: 14 }}>
-          {a.tipoAcesso === 'fechadura' && <><div className="eyebrow">Senha de uso único</div><div className="code num">{r.codigo}</div><div className="hint">Vale só para esta reserva e expira sozinha.</div></>}
-          {a.tipoAcesso === 'responsavel' && <><div className="eyebrow">Quem libera a entrada</div><b>{a.responsavelLocal ?? 'Responsável local'}</b><div className="hint">Já avisamos do seu horário.</div></>}
-          {(a.tipoAcesso === 'presencial' || !a.tipoAcesso) && <><div className="eyebrow">Acesso</div><b>{ACESSO.presencial}: o anfitrião recebe você</b><div className="hint">Código da reserva: <span className="num">{r.codigo}</span></div></>}
+      {(r.status === 'confirmada' || (r.tipo === 'servico' && ['aceito', 'a_caminho'].includes(r.status))) && (
+        <div className="codigo-chegada">
+          <div className="eyebrow">{a.tipoAcesso === 'fechadura' && r.tipo !== 'servico' ? 'Senha da porta' : 'Seu código de chegada'}</div>
+          <div className="code num">{r.codigo}</div>
+          <p className="hint" style={{ margin: 0 }}>
+            {r.tipo === 'servico' ? 'Quando o profissional chegar, ele pede este código para começar. Não passe o código por mensagem antes disso.'
+              : a.tipoAcesso === 'fechadura' ? 'Digite na fechadura. Vale só para esta reserva e expira sozinha.'
+              : r.chegadaConfirmada ? 'Código conferido. Chegada confirmada.'
+              : a.tipoAcesso === 'responsavel' ? `Mostre para ${a.responsavelLocal ?? 'o responsável local'}. O tempo começa quando o código for conferido.`
+              : a.tipoAcesso === 'portaria' ? 'Mostre na portaria. O tempo começa quando o código for conferido.'
+              : 'Mostre para o anfitrião ao chegar. O tempo começa quando o código for conferido.'}
+          </p>
+          {r.codigoTravado && <div className="alerta bad" style={{ marginTop: 10 }}>A conferência travou depois de muitas tentativas erradas. A equipe Celus foi avisada.</div>}
+          {demo && !r.chegadaConfirmada && ((r.tipo === 'hora' && a.tipoAcesso !== 'fechadura') || r.tipo === 'diaria' || r.status === 'a_caminho') && (
+            <button className="btn sm ghost" style={{ marginTop: 10 }} onClick={() => { const x = confirmarChegada(r.id, r.codigo, true); if (!x.ok) toast(x.erro); else if (r.tipo === 'hora') nav(`/uso/${r.id}`); }}>Simular conferência do código</button>
+          )}
         </div>
       )}
 
@@ -67,9 +81,9 @@ export function ReservaPage() {
       </div>
 
       <div className="stack" style={{ marginTop: 16 }}>
-        {r.status === 'confirmada' && r.tipo === 'hora' && <button className="btn" onClick={() => { iniciarUso(r.id); nav(`/uso/${r.id}`); }}>Cheguei, começar a usar</button>}
+        {r.status === 'confirmada' && r.tipo === 'hora' && a.tipoAcesso === 'fechadura' && <button className="btn" onClick={() => { iniciarUso(r.id); nav(`/uso/${r.id}`); }}>Abri a porta, começar a usar</button>}
         {r.status === 'confirmada' && r.tipo === 'diaria' && <button className="btn" onClick={() => { encerrar(r.id); }}>Fazer check-out</button>}
-        {r.status === 'a_caminho' && <button className="btn" onClick={() => avancarChamado(r.id, 'concluida')}>O serviço terminou</button>}
+        {r.status === 'em_andamento' && <button className="btn" onClick={() => avancarChamado(r.id, 'concluida')}>O serviço terminou</button>}
         {podeCancelar && !confirmarCancel && <button className="btn ghost" onClick={() => setConfirmarCancel(true)}>Cancelar</button>}
         {podeCancelar && confirmarCancel && (
           <div className="alerta warn">
@@ -83,7 +97,7 @@ export function ReservaPage() {
         <Link className="btn ghost" to={`/anuncio/${a.id}`}>Ver o anúncio</Link>
       </div>
       {(r.status === 'confirmada') && <><h2>Manual de bons modos</h2><div className="manual">{a.manualBonsModos}</div></>}
-      {r.tipo === 'servico' && r.status !== 'concluida' && <p className="hint" style={{ marginTop: 12 }}>Modo demonstração: o profissional aceita e sai a caminho sozinho em alguns segundos.</p>}
+      {r.tipo === 'servico' && demo && PASSOS.includes(r.status) && <p className="hint" style={{ marginTop: 12 }}>Modo demonstração: este profissional é fictício, então ele aceita e sai a caminho sozinho em alguns segundos.</p>}
     </>
   );
 }
@@ -94,6 +108,8 @@ export function UsoPage() {
   const agora = useAgora(500);
   const r = useDB((d) => d.reservas.find((x) => x.id === id));
   const a = useDB((d) => d.anuncios.find((x) => x.id === r?.anuncioId));
+  const restante = r && a && r.status === 'em_uso' ? cobranca(r, a, agora).restanteMin : null;
+  useEffect(() => { if (r && restante != null && restante <= AVISO_MIN && restante > 0 && !r.avisoFimEnviado) avisarFim(r.id, Math.ceil(restante)); }, [r, restante]);
   if (!r || !a) return <div className="empty">Reserva não encontrada.</div>;
   if (r.status !== 'em_uso') return <Navigate to={`/reserva/${r.id}`} replace />;
   const c = cobranca(r, a, agora);
@@ -123,7 +139,7 @@ export function UsoPage() {
         <div className="sumline"><span>Taxa de serviço</span><span>{brl(r.taxaUsuario)}</span></div>
         <div className="sumline"><span>Total até agora</span><span>{brl(c.total)}</span></div>
       </div>
-      {a.tipoAcesso === 'fechadura' && <div className="box" style={{ padding: 14, marginTop: 12 }}><div className="eyebrow">Senha de uso único</div><div className="code num">{r.codigo}</div></div>}
+      {a.tipoAcesso === 'fechadura' && <div className="box" style={{ padding: 14, marginTop: 12 }}><div className="eyebrow">Senha da porta</div><div className="code num">{r.codigo}</div></div>}
       <button className="btn ghost" style={{ marginTop: 12 }} onClick={() => { encerrar(r.id); nav(`/reserva/${r.id}`); }}>Encerrar e sair</button>
       <div className="demo row"><span>Teste do timer</span><span className="sp" /><button className="btn sm ghost" onClick={() => avancarTeste(r.id, 10)}>Avançar 10 min</button></div>
     </>
