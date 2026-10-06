@@ -96,6 +96,7 @@ export function moderar(txt: string): string | null {
   if (BLOQ.some((w) => t.includes(w))) return 'Mensagem bloqueada: linguagem ofensiva.';
   if (/(\d[\s.-]?){8,}/.test(t)) return 'Por segurança, não compartilhe telefone no chat aberto.';
   if (/(https?:\/\/|www\.|\.com\b|\.br\b|@\w+\.\w+)/.test(t)) return 'Por segurança, links e e-mails não são permitidos no chat aberto.';
+  if (/(por fora|chave pix|meu pix|pix direto|maquininha)/.test(t)) return 'Na Celus, pagamento só pelo app. Combinar pagamento por fora não é permitido.';
   return null;
 }
 
@@ -125,3 +126,7 @@ export const GANHOS = [
   { chave: 'curtida', txt: 'Receber curtida no story', v: 1, limite: 20 },
   { chave: 'semaforo', txt: 'Marcar o semáforo de segurança', v: 2, limite: 5 },
 ];
+
+/** Pagamento só pelo app, antecipado, por cartão ou Pix. Nunca em dinheiro, maquininha ou Pix direto ao anfitrião. */
+const POR_FORA = /(em dinheiro|dinheiro vivo|aceito dinheiro|maquininha|maquina de cart|m[aá]quina de cart|pague? (no|na hora|no local|na entrada)|pagamento (no|na) (local|hora|entrada)|por fora|chave pix|meu pix|pix direto)/i;
+export const pedePagamentoPorFora = (txt: string) => POR_FORA.test(txt);

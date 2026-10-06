@@ -66,6 +66,7 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Ficar e eventos: sem taxa para o usuário, preço final.
 - Imóveis: sem comissão sobre venda; plano mensal do anunciante. Corretagem conduzida pelo sócio advogado com CRECI.
 - Extras e tempo excedente seguem a mesma porcentagem.
+- **Pagamento só pelo app, antes do uso, por cartão ou Pix.** Nunca em dinheiro, maquininha ou Pix direto ao anfitrião ou profissional, nem para extras e tempo a mais. O app bloqueia pedidos de pagamento por fora em anúncios e no chat, e o cliente pode avisar a Celus; cobrar por fora leva à suspensão.
 - Pagamento entra pela Celus, gateway faz o split, parte do anfitrião fica retida até o uso. Repasse: hora D+1 após o uso; ficar/eventos 24 h após check-in; serviços D+1 após concluir.
 - Estorno de cartão é descontado do próximo repasse do anfitrião (contrato de adesão).
 - Nota fiscal: anfitrião e profissional emitem sobre os próprios ganhos; a Celus emite sobre a comissão.

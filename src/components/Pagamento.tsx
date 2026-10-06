@@ -41,7 +41,7 @@ export function Pagamento({ total, titulo, onPagar, onFechar }: { total: number;
             <button className="btn" style={{ marginTop: 12 }} onClick={() => onPagar('pix')}>Simular Pix recebido</button>
           </>
         )}
-        <p className="hint" style={{ marginTop: 12 }}>Ambiente de teste: nenhum valor é cobrado. O pagamento real entra quando o gateway for ligado.</p>
+        <p className="hint" style={{ marginTop: 12 }}>Na Celus você paga antes, sempre pelo app. Nunca em dinheiro ou maquininha no local. Ambiente de teste: nenhum valor é cobrado.</p>
       </div>
     </div>
   );

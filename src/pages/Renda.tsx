@@ -8,10 +8,10 @@ import { emDestaque } from '../data/useAnuncios';
 import { brl, rotuloPreco, virgula } from '../lib/format';
 import { centroPiloto } from '../lib/geo';
 import {
-  COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, bloqueadoPorConferencia, jornada, parteAnfitriao, precisaSupervisao, repasse,
+  COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
 } from '../lib/regras';
 import {
-  alternarDisponivel, avaliarHospede, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
+  alternarDisponivel, arquivarPorFora, avaliarHospede, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
   denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
 } from '../store/acoes';
 import { useDB, useUsuario } from '../store/db';
@@ -296,6 +296,7 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
     if (mostraPacotes && !f.pacotes.some((p) => p.preco > 0)) return setErro('Defina o preço de pelo menos um pacote.');
     if (tipo !== 'pacote' && !(f.preco > 0)) return setErro('Defina o preço.');
     if (!f.manual.trim()) return setErro(servico ? 'Conte como você trabalha.' : 'Escreva o manual de bons modos.');
+    if ([f.titulo, f.descricao, f.manual, ...f.extras.map((x) => x.nome)].some(pedePagamentoPorFora)) return setErro('Na Celus, todo pagamento é feito antes, pelo app. Tire do texto qualquer pedido de dinheiro, maquininha ou Pix direto.');
     onEnviar(f);
   }
 
@@ -357,8 +358,8 @@ function FormAnuncio({ inicial, titulo, lead, botao, onEnviar, travarCategoria }
           </>
         )}
         <label className="campo">{servico ? 'Como você trabalha' : 'Manual de bons modos'}<textarea rows={3} value={f.manual} onChange={(e) => set('manual', e.target.value)} /></label>
-        {servico ? <div className="dica"><p style={{ margin: 0 }}>Você trabalha como freelancer. Depois de 12 h seguidas disponível, seu perfil pausa por 6 h. A comissão da Celus é de 15% por chamado e você emite nota sobre o que ganhar.</p></div>
-          : <div className="dica"><p style={{ margin: 0 }}>Regra da casa: nenhum espaço pode deixar duas pessoas desconhecidas sozinhas num ambiente íntimo fechado. Prefira acesso independente. Comissão Celus: 15% por reserva.</p></div>}
+        {servico ? <div className="dica"><p style={{ margin: 0 }}>Você trabalha como freelancer. Depois de 12 h seguidas disponível, seu perfil pausa por 6 h. O cliente paga antes, pelo app; cobrar por fora, em dinheiro ou maquininha, leva à suspensão. A comissão da Celus é de 15% por chamado e você emite nota sobre o que ganhar.</p></div>
+          : <div className="dica"><p style={{ margin: 0 }}>Regras da casa: nenhum espaço pode deixar duas pessoas desconhecidas sozinhas num ambiente íntimo fechado; prefira acesso independente. Todo pagamento é feito antes, pelo app, incluindo extras e tempo a mais. Cobrar por fora, em dinheiro ou maquininha, leva à suspensão. Comissão Celus: 15% por reserva.</p></div>}
         {erro && <p className="erro" role="alert">{erro}</p>}
         <button className="btn">{botao}</button>
       </div>
@@ -425,6 +426,7 @@ export function Curadoria() {
   const pend = anuncios.filter((a) => a.status === 'pendente');
   const revisar = anuncios.filter((a) => a.revisar);
   const travadas = reservas.filter((r) => r.codigoTravado);
+  const porFora = reservas.filter((r) => r.pagamentoPorFora);
   return (
     <>
       <h1>Curadoria</h1>
@@ -458,6 +460,18 @@ export function Curadoria() {
           </div>
         </div>
       ))}</div> : <div className="empty">Fila vazia.</div>}
+      {porFora.length > 0 && (
+        <>
+          <h2>Pedidos de pagamento por fora</h2>
+          <div className="stack">{porFora.map((r) => (
+            <div key={r.id} className="box" style={{ padding: 14 }}>
+              <b>{anuncios.find((a) => a.id === r.anuncioId)?.titulo}</b>
+              <div className="meta">Avisado por {usuarios[r.userId]?.nome ?? 'cliente'}.</div>
+              <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => { arquivarPorFora(r.id, true); toast('Anúncio pausado'); }}>Pausar anúncio</button><button className="btn sm ghost" onClick={() => { arquivarPorFora(r.id, false); toast('Aviso arquivado'); }}>Arquivar</button></div>
+            </div>
+          ))}</div>
+        </>
+      )}
       {travadas.length > 0 && (
         <>
           <h2>Códigos de chegada travados</h2>

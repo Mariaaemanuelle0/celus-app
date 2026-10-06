@@ -4,7 +4,7 @@ import { CATEGORIAS } from '../data/catalogo';
 import { Estrelas, Voltar, toast, useAgora } from '../components/ui';
 import { brl, rotuloHoras } from '../lib/format';
 import { AVISO_MIN, CARENCIA_MIN, cobranca, reembolso } from '../lib/regras';
-import { avaliarAnuncio, avancarChamado, avancarTeste, avisarFim, cancelar, confirmarChegada, encerrar, estender, iniciarUso } from '../store/acoes';
+import { avaliarAnuncio, avancarChamado, avancarTeste, avisarFim, cancelar, confirmarChegada, encerrar, estender, iniciarUso, relatarPorFora } from '../store/acoes';
 import { useDB } from '../store/db';
 
 const dataHora = (t: number) => new Date(t).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -96,6 +96,14 @@ export function ReservaPage() {
         )}
         <Link className="btn ghost" to={`/anuncio/${a.id}`}>Ver o anúncio</Link>
       </div>
+      {!['cancelada', 'recusado'].includes(r.status) && (
+        <div className="regra-pag">
+          <b>Tudo já está pago pelo app.</b> Ninguém pode cobrar você em dinheiro, maquininha ou Pix direto, nem por extras ou tempo a mais: isso também é cobrado pelo app.
+          {r.pagamentoPorFora
+            ? <span className="hint" style={{ display: 'block', marginTop: 6, color: 'var(--ok)' }}>Recebemos seu aviso. A equipe Celus vai verificar.</span>
+            : <button className="mden" style={{ display: 'block', marginTop: 8, fontSize: 13 }} onClick={() => { relatarPorFora(r.id); toast('Aviso enviado à equipe Celus'); }}>Pediram pagamento por fora? Avise a Celus</button>}
+        </div>
+      )}
       {(r.status === 'confirmada') && <><h2>Manual de bons modos</h2><div className="manual">{a.manualBonsModos}</div></>}
       {r.tipo === 'servico' && demo && PASSOS.includes(r.status) && <p className="hint" style={{ marginTop: 12 }}>Modo demonstração: este profissional é fictício, então ele aceita e sai a caminho sozinho em alguns segundos.</p>}
     </>

@@ -109,6 +109,8 @@ export type Reserva = {
   chegadaConfirmada?: number;
   tentativasCodigo?: number;
   codigoTravado?: boolean;
+  /** Cliente relatou pedido de pagamento por fora (dinheiro, maquininha, Pix direto). */
+  pagamentoPorFora?: number;
 };
 
 export type Notificacao = { id: string; userId: string; t: number; txt: string; link?: string; lida: boolean };

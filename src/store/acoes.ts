@@ -215,6 +215,15 @@ export function confirmarChegada(reservaId: string, digitado: string, demo = fal
   return { ok: true };
 }
 
+/** Cliente avisa que pediram pagamento por fora. Vai para a curadoria. */
+export const relatarPorFora = (reservaId: string) => mudar((d) => { const r = d.reservas.find((x) => x.id === reservaId); if (r && !r.pagamentoPorFora) r.pagamentoPorFora = Date.now(); });
+export const arquivarPorFora = (reservaId: string, pausar: boolean) => mudar((d) => {
+  const r = d.reservas.find((x) => x.id === reservaId); if (!r) return;
+  r.pagamentoPorFora = undefined;
+  const a = d.anuncios.find((x) => x.id === r.anuncioId);
+  if (pausar && a) { a.status = 'pausado'; notificar(d, a.donoId, `${a.titulo} foi pausado: houve pedido de pagamento fora do app. Na Celus, todo pagamento é feito pelo app.`, '/renda'); }
+});
+
 /** Curadoria libera uma conferência travada. */
 export const destravarCodigo = (reservaId: string) => mudar((d) => { const r = d.reservas.find((x) => x.id === reservaId); if (r) { r.codigoTravado = false; r.tentativasCodigo = 0; } });
 export const estender = (id: string) => mudar((d) => { const r = d.reservas.find((x) => x.id === id); if (r) r.extensoes++; });

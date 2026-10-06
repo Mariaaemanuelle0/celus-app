@@ -403,3 +403,6 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .fotoedit { position: relative; padding: 0; border: 0; background: none; }
 .fotoedit img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line-2); display: block; }
 .fotoedit span { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line-2); color: var(--text); display: grid; place-items: center; font-size: 14px; }
+
+.regra-pag { margin-top: 16px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 13.5px; color: var(--text-2); }
+.regra-pag b { color: var(--text); }
