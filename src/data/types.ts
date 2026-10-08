@@ -90,6 +90,8 @@ export type Usuario = {
   comissaoReduzidaAte?: number;
   /** Última forma de pagamento usada: vira a escolha padrão na próxima (pagar rápido). */
   ultimoPagamento?: 'pix' | 'cartao';
+  /** Blocos do perfil que outras pessoas podem ver. */
+  privacidade?: { comunidades: boolean; eventos: boolean; lugares: boolean };
   /** Onde quem anuncia recebe os repasses. */
   recebimento?: { tipo: 'cpf' | 'cnpj' | 'email' | 'celular' | 'aleatoria'; chave: string; titular: string };
 };
@@ -157,7 +159,7 @@ export type MarcaSemaforo = { cell: string; slot: string; nivel: 1 | 2 | 3; t: n
 
 export type Lancamento = { t: number; txt: string; v: number };
 export type Vale = { nome: string; onde: string; codigo: string; t: number };
-export type Carteira = { saldo: number; hist: Lancamento[]; hoje: { dia: string; contagem: Record<string, number> }; vales: Vale[] };
+export type Carteira = { saldo: number; hist: Lancamento[]; hoje: { dia: string; contagem: Record<string, number> }; vales: Vale[]; /** Celus guardados (caução de encontro, troca em andamento): ainda são da pessoa, mas não dá para usar. */ reservado?: number };
 
 export type Beneficio = { id: string; grupo: 'local' | 'evento' | 'celus' | 'anfitriao'; anuncioId?: string; nome: string; desc: string; custo: number };
 
@@ -168,4 +170,22 @@ export type Suporte = {
   id: string; reservaId: string; userId: string; anuncioId: string;
   motivo: string; texto: string; t: number;
   status: 'aberto' | 'resolvido'; resposta?: string; reembolso?: number; resolvidoEm?: number;
+};
+
+/** Comunidade: grupo de interesse de um lugar (ex.: corrida na Enseada). */
+export type Comunidade = {
+  id: string; nome: string; atividade: string; descricao: string; regras: string;
+  lat: number; lng: number; bairro: string; criadorId: string; membros: string[]; membrosBase?: number; criadoEm: number;
+};
+export type Presenca = { userId: string; t: number; codigo: string; status: 'confirmado' | 'presente' | 'faltou' | 'cancelado' };
+/** Encontro de uma comunidade, com caução opcional em celus. */
+export type Encontro = {
+  id: string; comunidadeId: string; organizadorId: string; titulo: string; descricao: string; local: string;
+  inicio: number; fim: number; vagas: number; caucao: number; prazoCancelH: number; presencas: Presenca[]; encerrado?: boolean;
+};
+/** Troca: item que ia para o lixo ou não tem mais uso, trocado por celus (ou doado, com preço zero). */
+export type Troca = {
+  id: string; donoId: string; titulo: string; descricao: string; estado: 'novo' | 'usado'; preco: number; fotos: string[];
+  lat: number; lng: number; bairro: string; criadoEm: number;
+  status: 'disponivel' | 'reservado' | 'entregue' | 'removido'; compradorId?: string; codigo?: string; reservadoEm?: number; entregueEm?: number; denuncias?: number;
 };

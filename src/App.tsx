@@ -24,6 +24,13 @@ const Recebimento = sob(() => import('./pages/Renda'), 'Recebimento');
 const Notificacoes = sob(() => import('./pages/Notificacoes'), 'Notificacoes');
 const ReservaPage = sob(() => import('./pages/ReservaPage'), 'ReservaPage');
 const UsoPage = sob(() => import('./pages/ReservaPage'), 'UsoPage');
+const Comunidades = sob(() => import('./pages/Comunidade'), 'Comunidades');
+const NovaComunidade = sob(() => import('./pages/Comunidade'), 'NovaComunidade');
+const ComunidadePage = sob(() => import('./pages/Comunidade'), 'ComunidadePage');
+const Trocas = sob(() => import('./pages/Trocas'), 'Trocas');
+const NovaTroca = sob(() => import('./pages/Trocas'), 'NovaTroca');
+const TrocaPage = sob(() => import('./pages/Trocas'), 'TrocaPage');
+const Pessoa = sob(() => import('./pages/Pessoa'), 'Pessoa');
 import { useUsuario } from './store/db';
 
 function SoDeslogado({ children }: { children: React.ReactNode }) {
@@ -44,6 +51,13 @@ export default function App() {
           <Route path="story/:id" element={<PostarStory />} />
           <Route path="feed" element={<FeedPage />} />
           <Route path="chat" element={<ChatPage />} />
+          <Route path="comunidade" element={<Comunidades />} />
+          <Route path="comunidade/nova" element={<NovaComunidade />} />
+          <Route path="comunidade/:id" element={<ComunidadePage />} />
+          <Route path="trocas" element={<Trocas />} />
+          <Route path="trocas/nova" element={<NovaTroca />} />
+          <Route path="troca/:id" element={<TrocaPage />} />
+          <Route path="pessoa/:id" element={<Pessoa />} />
           <Route path="perfil" element={<PerfilPage />} />
           <Route path="perfil/editar" element={<EditarPerfil />} />
           <Route path="perfil/excluir" element={<ExcluirConta />} />

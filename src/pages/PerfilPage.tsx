@@ -6,9 +6,10 @@ import { Visualizador } from '../components/Stories';
 import { Miniatura, Moeda, Voltar, lerImagem, toast } from '../components/ui';
 import { brl } from '../lib/format';
 import { idade } from '../lib/regras';
-import { alternarAlbum, alternarEquipe, atualizarPerfil, excluirConta, resgatar, resgatarAnfitriao, sair, storiesVisiveis } from '../store/acoes';
+import { alternarAlbum, alternarEquipe, alternarPrivacidade, atualizarPerfil, excluirConta, resgatar, resgatarAnfitriao, sair, storiesVisiveis } from '../store/acoes';
 import { apagarTudo, carteiraDe, useDB, useUsuario } from '../store/db';
-import { GANHOS } from '../lib/regras';
+import { CELUS_EM_REAIS, GANHOS } from '../lib/regras';
+import { NOME_TROCAS, useBlocosPerfil } from '../lib/perfil';
 
 const STATUS: Record<string, string> = { confirmada: 'Confirmada', em_uso: 'Em uso', concluida: 'Concluída', cancelada: 'Cancelada', solicitado: 'Chamado enviado', aceito: 'Aceito', a_caminho: 'A caminho' };
 const data = (t: number) => new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
@@ -25,6 +26,9 @@ export function PerfilPage() {
   const stories = useDB((d) => d.stories);
   const denuncias = useDB((d) => d.denuncias);
   const saldo = useDB((d) => carteiraDe(d, u.id).saldo);
+  const reservado = useDB((d) => carteiraDe(d, u.id).reservado ?? 0);
+  const blocos = useBlocosPerfil(u.id);
+  const priv = u.privacidade ?? { comunidades: true, eventos: true, lugares: false };
   const [confirmaApagar, setConfirmaApagar] = useState(false);
 
   const minhas = reservas.filter((r) => r.userId === u.id);
@@ -51,8 +55,28 @@ export function PerfilPage() {
 
       <Link to="/celus" className="walletmini">
         <span className="row" style={{ flexWrap: 'nowrap', gap: 10 }}><Moeda tamanho={26} /><span><span className="eyebrow" style={{ display: 'block' }}>Meus celus</span><b className="num" style={{ fontSize: 20, fontWeight: 500 }}>{saldo}</b></span></span>
-        <span className="hint">Ver e trocar ›</span>
+        <span className="hint" style={{ textAlign: 'right' }}>{reservado ? <>{reservado} guardados<br /></> : null}Ver e usar ›</span>
       </Link>
+
+      <div className="entradas">
+        <Link to="/comunidade" className="box entrada">
+          <span className="entrada-ic comu-cor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="9" r="3" /><circle cx="17" cy="10" r="2.4" /><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5" /><path d="M15 14.5c3 0 6 1.5 6 4.5" /></svg></span>
+          <b>Comunidades</b><span className="hint">{blocos.comu.length ? `Você está em ${blocos.comu.length}` : 'Gente que faz o mesmo que você, perto'}</span>
+        </Link>
+        <Link to="/trocas" className="box entrada">
+          <span className="entrada-ic feira-cor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9l1.5-5h13L20 9" /><path d="M4 9c0 1.7 1.3 3 3 3s2.7-1.3 2.7-3c0 1.7 1.3 3 2.3 3s2.3-1.3 2.3-3c0 1.7 1 3 2.7 3s3-1.3 3-3" /><path d="M5.5 12v8h13v-8" /></svg></span>
+          <b>{NOME_TROCAS}</b><span className="hint">Troque por celus ou doe</span>
+        </Link>
+      </div>
+
+      <h2>No seu perfil</h2>
+      <p className="hint" style={{ margin: '-6px 0 10px' }}>Sem seguidores. Quem abre seu perfil vê só o que você deixar visível. <Link to={`/pessoa/${u.id}`}>Ver como os outros veem</Link></p>
+      <div className="box" style={{ padding: '4px 14px' }}>
+        {([['comunidades', 'Comunidades', blocos.comu.length], ['eventos', 'Eventos que fui', blocos.eventos.length], ['lugares', 'Lugares que usei', blocos.lugares.length]] as const).map(([k, t, n]) => (
+          <label key={k} className="sumline priv"><span>{t} <span className="hint">({n})</span></span><span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}><span className="hint">{priv[k] ? 'Visível' : 'Oculto'}</span><input type="checkbox" checked={priv[k]} onChange={() => alternarPrivacidade(k)} aria-label={`Mostrar ${t.toLowerCase()} no perfil`} /></span></label>
+        ))}
+      </div>
+      {blocos.comu.length > 0 && <div className="chips" style={{ marginTop: 10 }}>{blocos.comu.map((c) => <Link key={c.id} to={`/comunidade/${c.id}`} className="chip">{c.nome}</Link>)}</div>}
 
       <div className="kpis">
         {([['reservas', 'Reservas', minhas.length], ['sonhos', 'Sonhos', meusSonhos.length], ['avaliacoes', 'Avaliações', recebidas.length]] as const).map(([k, t, n]) => (
@@ -130,7 +154,8 @@ export function CelusPage() {
       <div className="walletcard">
         <div className="eyebrow">Meus celus</div>
         <div className="row" style={{ marginTop: 8 }}><Moeda tamanho={34} /><b className="num" style={{ fontSize: 38, fontWeight: 500 }}>{saldo}</b></div>
-        <p style={{ margin: '6px 0 0', fontSize: 13 }}>Funciona como milhas. Não vale dinheiro, não compra, não vende e não transfere.</p>
+        {!!c?.reservado && <p className="hint" style={{ margin: '4px 0 0' }}>Mais <b className="num">{c.reservado}</b> guardados em cauções e trocas em andamento.</p>}
+        <p style={{ margin: '6px 0 0', fontSize: 13 }}>Referência: 1 celus = R$ {CELUS_EM_REAIS}. Celus não se saca nem se compra com dinheiro: você ganha usando o app e usa em benefícios, cauções de encontros e no {NOME_TROCAS}.</p>
       </div>
       {!!c?.vales.length && <><h2>Seus vales</h2><div className="stack">{c.vales.map((v) => <div key={v.codigo} className="box linha"><div className="sp"><b>{v.nome}</b><div className="hint">{v.onde}. Mostre o código no local</div></div><span className="code num" style={{ fontSize: 16 }}>{v.codigo}</span></div>)}</div></>}
       {(Object.keys(GRUPOS) as (keyof typeof GRUPOS)[]).map((g) => (
@@ -150,10 +175,15 @@ export function CelusPage() {
           ))}</div>
         </div>
       ))}
+      <h2>Outros usos</h2>
+      <div className="stack">
+        <Link to="/trocas" className="box linha" style={{ color: 'var(--text)', textDecoration: 'none' }}><div className="sp"><b>{NOME_TROCAS}</b><div className="hint">Pegue itens de quem não usa mais. Quem entrega recebe seus celus.</div></div><span>›</span></Link>
+        <Link to="/comunidade" className="box linha" style={{ color: 'var(--text)', textDecoration: 'none' }}><div className="sp"><b>Caução de encontros</b><div className="hint">Confirme presença em aulas e encontros. Foi, os celus voltam. Faltou sem cancelar no prazo, vão para quem organizou.</div></div><span>›</span></Link>
+      </div>
       <h2>Como ganhar</h2>
       <div className="box" style={{ padding: '4px 14px' }}>{GANHOS.map((g) => <div key={g.chave} className="sumline"><span>{g.txt}{g.limite ? <span className="hint">, até {g.limite} por dia</span> : null}</span><span style={{ color: 'var(--accent-2)' }}>+{g.v}</span></div>)}</div>
       <h2>Extrato</h2>
-      {c?.hist.length ? <div className="box" style={{ padding: '4px 14px' }}>{c.hist.slice(0, 30).map((h, i) => <div key={i} className="sumline"><span>{h.txt}<div className="hint">{quando(h.t)}</div></span><span style={{ color: h.v > 0 ? 'var(--ok)' : 'var(--muted)' }}>{h.v > 0 ? '+' : ''}{h.v}</span></div>)}</div>
+      {c?.hist.length ? <div className="box" style={{ padding: '4px 14px' }}>{c.hist.slice(0, 30).map((h, i) => <div key={i} className="sumline"><span>{h.txt}<div className="hint">{quando(h.t)}</div></span><span style={{ color: h.v > 0 ? 'var(--ok)' : 'var(--muted)' }}>{h.v > 0 ? '+' : ''}{h.v || ''}</span></div>)}</div>
         : <div className="empty">Você ainda não ganhou celus. Reserve, avalie ou marque o semáforo para começar.</div>}
     </>
   );

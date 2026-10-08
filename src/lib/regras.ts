@@ -7,6 +7,8 @@ export const COMISSAO_REDUZIDA = 0.13;
 /** Ingressos (proposta): quem compra paga 10% de taxa de serviço; o organizador recebe o valor do ingresso inteiro. */
 export const TAXA_INGRESSO = 0.1;
 export const MAX_INGRESSOS_COMPRA = 6;
+/** Referência combinada: 1 celus vale R$ 1 como parâmetro de valor (não é troca por dinheiro). */
+export const CELUS_EM_REAIS = 1;
 export const JORNADA_H = 12;
 export const PAUSA_H = 6;
 export const LIMITE_SEM_SUPERVISAO = 5;
@@ -132,6 +134,7 @@ export function slotDe(t = new Date()): string {
 
 /** Ganhos de celus (com limite diário onde há). */
 export const GANHOS = [
+  { chave: 'boasvindas', txt: 'Boas-vindas ao criar a conta', v: 100, limite: 1 },
   { chave: 'aval5', txt: 'Ser avaliado com 5 estrelas', v: 20 },
   { chave: 'aval4', txt: 'Ser avaliado com 4 estrelas', v: 10 },
   { chave: 'avaliar', txt: 'Avaliar depois de usar um espaço', v: 10 },

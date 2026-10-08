@@ -10,6 +10,7 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 ## Navegação
 - Topo: alternância entre **Procurar** e **Rentabilizar**.
 - Rodapé de Procurar: **Mapa, Feed, Chat, Perfil**. O app abre no Mapa. Não existe aba Início.
+- Comunidades e Feira do Polvo (trocas) ficam dentro do Perfil, cada uma com entrada própria.
 - Rodapé de Rentabilizar: **Painel, Anunciar, Curadoria**.
 - Livro dos sonhos e reservas ficam dentro do Perfil.
 
@@ -95,7 +96,9 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 - Espaço sem limpeza contratada: pergunta "deixou como recebeu?" (sim/não).
 
 ## Celus (moeda)
-- Sempre só pontos. Não compra, não vende, não saca, não transfere. Nunca meio de pagamento.
+- Pontos: não se compra com dinheiro e não se saca. Referência de valor: **1 celus = R$ 1** (parâmetro mostrado na carteira, não é conversão).
+- Passam de uma pessoa para outra só em dois casos, sempre guardados (reservados) antes: caução de encontro (vai para quem organiza se a pessoa faltar) e troca no Feira do Polvo (vai para quem entrega, depois do código conferido).
+- Boas-vindas: 100 celus ao criar a conta.
 - Ganha: ser bem avaliado (+20 com 5 estrelas, +10 com 4), avaliar (+10), 1 a cada R$ 10 em reservas, story (+5, até 3/dia), curtida (+1, até 20/dia), semáforo (+2, até 5/dia).
 - Usa: brindes e descontos oferecidos pelos próprios locais, eventos Celus (ex.: ingresso 100 celus, bola na praia 20 celus/hora), campanhas, e para anfitriões: destaque pago, campanha do mês, comissão 2 pontos menor por 30 dias (máx. 1x/mês).
 - Parceiros externos (games etc.) só depois de validação jurídica, e oferecendo benefícios, não aceitando celus como pagamento.
@@ -144,26 +147,37 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Stories: só de quem está no local, somem em 3 h, anfitrião não apaga; curadoria decide denúncias; proibido expor pessoas sem autorização e crianças.
 - Chat do quadrante: mensagens somem em 10 min; proibido telefone, links e combinar pagamento.
 - Semáforo é percepção de usuários, não garantia de segurança.
-- Celus são pontos: não valem dinheiro, não compram, não vendem, não transferem.
+- Celus são pontos: não se compram nem se sacam; referência 1 celus = R$ 1; passam entre pessoas só em caução de encontro e troca de itens (validar enquadramento: meio de pagamento, tributação, Código de Defesa do Consumidor).
+- Caução de encontros: "responsabilidade com o fornecedor". Quem confirma e falta sem cancelar no prazo perde a caução para quem organiza. Prazo definido pelo organizador e mostrado antes de confirmar.
+- Feira do Polvo: itens proibidos (armas, remédios, bebidas, cigarros, animais, documentos); quem anuncia responde pelo item (origem e estado); a Celus não entrega nem garante o produto; 3 denúncias tiram o item do ar.
+- Perfil público: comunidades e eventos visíveis por padrão, lugares ocultos por padrão; nada em tempo real.
 - Nota fiscal: anfitrião e profissional sobre os próprios ganhos; Celus sobre a comissão.
 - Imóveis: sem comissão sobre venda; corretagem com o sócio que tem CRECI.
 - Ingressos: regras de meia-entrada e cota obrigatória (lei federal), direito de arrependimento em compra online, responsabilidade do organizador por alvarás, segurança, capacidade e proibição de menores; taxa de serviço destacada no preço.
 - Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
 - LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).
 
-## Ideias em discussão (outubro de 2026, aguardando decisão)
-- **Comunidades** (estilo comunidades do Orkut): grupos por atividade e lugar (calistenia, corrida, trilha, futevôlei...), achados no mapa e por quem chega na cidade, sem depender de grupo de WhatsApp. Proposta: aba "Comunidades" que junta as comunidades perto e o chat da região.
-- **Perfil sem seguidores:** mostra comunidades, eventos e lugares em que a pessoa esteve, cada bloco com opção de visível ou oculto. Proposta: lugares visitados ocultos por padrão e nunca em tempo real (segurança).
-- **Currículo de freelancer:** histórico de trabalhos e estrelas visível só para quem está contratando; locais também ganham nota de "bom para trabalhar como freelancer".
-- **Aula experimental com celus:** em vez de pagamento em celus entre pessoas, proposta de "reserva com caução": a pessoa bloqueia celus para garantir a vaga, recebe de volta ao comparecer (código de chegada) e perde se faltar (os celus somem, não vão para ninguém). Quem oferece a aula pode ganhar celus da própria Celus por aluno presente. Evita fixar celus ao real e transferir pontos entre pessoas.
+## Comunidades (decidido em outubro de 2026)
+- Grupos de interesse ligados a um lugar, como as comunidades do Orkut (ex.: "Corrida na Enseada"). Quem entra sabe o que o grupo faz e onde.
+- Chat é outra coisa: alerta do que está acontecendo ao redor (cheiro de gás, barulho). Os dois não se misturam.
+- Membros marcam encontros e divulgam eventos. Encontro pode ter caução em celus (0 a 500), com prazo de cancelamento e código de chegada conferido por quem organiza.
+- Encontro passado encerra sozinho: quem confirmou e não teve o código conferido conta como falta.
+
+## Feira do Polvo (trocas, decidido em outubro de 2026)
+- Seção para o que ia para o lixo ou não tem mais uso (mudas, geladeira antiga, cama, brinquedo). Troca por celus ou doação (valor 0).
+- Foto obrigatória, identidade verificada, de 0 a 5.000 celus. Endereço exato só depois da reserva.
+- Quem quer reserva os celus; na retirada, quem entrega digita o código de quem recebe e só então os celus passam.
+- Nome escolhido pela fundadora. "Fenda do Biquíni" descartado por ser marca registrada de terceiros. Antes de lançar, consultar o INPI para "Feira do Polvo".
+
+## Perfil sem seguidores
+- Mostra comunidades, eventos (ingressos e encontros com presença) e lugares usados. Cada bloco visível ou oculto pela própria pessoa.
+
+## Ideias em discussão
+- **Currículo de freelancer:** histórico de trabalhos e estrelas visível só para quem está contratando; locais também ganham nota de "bom para trabalhar como freelancer". Próxima etapa.
 
 ## Ideias para depois (registradas, não construir agora)
 - **Plataforma de pontos própria, no modelo de coalizão (referência citada pela fundadora: Stix).** Uma plataforma só para os celus, separada do app: empresas compram pacotes de celus para dar aos clientes (lojas físicas e também comércios digitais), as pessoas acumulam em vários parceiros e trocam num catálogo de produtos, como um "Mercado Livre de pontos".
   - Primeiro passo possível dentro do app: "locais geram celus" com modo Caixa para o lojista, venda de pacotes e validade dos pontos.
-  - Transferência entre pessoas segue proibida até validação jurídica; se liberada, no formato "presentear" com limite mensal e só entre contas verificadas.
+  - Transferência livre entre pessoas (fora de caução e trocas) segue fora até validação jurídica; se liberada, no formato "presentear" com limite mensal e só entre contas verificadas.
   - Condição para virar plataforma separada: base de usuários grande o bastante para os parceiros quererem comprar pontos.
   - Técnico: manter o extrato de celus como um registro próprio (ledger), para poder separar em outro sistema sem refazer o app.
-- **Trocas entre pessoas por celus (itens usados ou novos).** Pessoas anunciam objetos e recebem celus de quem quiser o item, virando uma plataforma de troca.
-  - Atenção: isso faz o celus passar de uma pessoa para outra, o contrário da regra atual ("nunca transfere"). Depende de validação jurídica (enquadramento do ponto como meio de pagamento, tributação da troca, responsabilidade por produto).
-  - Riscos a desenhar antes: item roubado ou falso, golpe na entrega, disputa, contas falsas gerando celus para "comprar" itens.
-  - Alternativa mais segura a avaliar: troca intermediada pela Celus (o item entra num catálogo curado e quem cede recebe celus da Celus, com limite), em vez de pagamento direto entre pessoas.

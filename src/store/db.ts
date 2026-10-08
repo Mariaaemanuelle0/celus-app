@@ -2,9 +2,9 @@
 // Quando o Supabase for ligado, estas ações passam a chamar o servidor; as telas não mudam.
 import { useSyncExternalStore } from 'react';
 import type {
-  Anuncio, Avaliacao, Beneficio, Carteira, Denuncia, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
+  Anuncio, Avaliacao, Beneficio, Carteira, Comunidade, Denuncia, Encontro, Troca, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
 } from '../data/types';
-import { anunciosFicticios } from '../data/seed';
+import { anunciosFicticios, sementesComunidade } from '../data/seed';
 import { centroPiloto } from '../lib/geo';
 import { GANHOS } from '../lib/regras';
 
@@ -27,6 +27,9 @@ export type DB = {
   notificacoes: Notificacao[];
   interesses: { userId: string; anuncioId: string; t: number }[];
   suporte: Suporte[];
+  comunidades: Comunidade[];
+  encontros: Encontro[];
+  trocas: Troca[];
 };
 
 const CHAVE = 'celus-db-v1';
@@ -63,6 +66,7 @@ function inicial(): DB {
     notificacoes: [],
     interesses: [],
     suporte: [],
+    ...sementesComunidade(),
   };
 }
 
@@ -75,6 +79,7 @@ function carregar(): DB {
         db.notificacoes ??= [];
         db.interesses ??= [];
         db.suporte ??= [];
+        if (!db.comunidades) Object.assign(db, sementesComunidade());
         for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
         return db;
       }
@@ -146,4 +151,35 @@ export function notificar(d: DB, userId: string | undefined, txt: string, link?:
   if (!userId || userId === 'celus-demo' || userId.startsWith('demo-')) return;
   d.notificacoes.unshift({ id: novoId(), userId, t: Date.now(), txt, link, lida: false });
   if (d.notificacoes.length > 300) d.notificacoes.length = 300;
+}
+
+/* ---------- Celus reservados (caução e trocas) ---------- */
+/** Separa celus do saldo disponível. Falha se não houver saldo. */
+export function reservarCelus(d: DB, userId: string, v: number, txt: string): boolean {
+  if (v <= 0) return true;
+  const c = carteiraDe(d, userId);
+  if (c.saldo < v) return false;
+  c.saldo -= v; c.reservado = (c.reservado ?? 0) + v;
+  c.hist.unshift({ t: Date.now(), txt: `Reservado: ${txt}`, v: -v });
+  d.carteiras[userId] = c; return true;
+}
+/** Devolve celus reservados para o saldo da mesma pessoa. */
+export function devolverCelus(d: DB, userId: string, v: number, txt: string) {
+  if (v <= 0) return;
+  const c = carteiraDe(d, userId);
+  c.reservado = Math.max(0, (c.reservado ?? 0) - v); c.saldo += v;
+  c.hist.unshift({ t: Date.now(), txt: `Devolvido: ${txt}`, v });
+  d.carteiras[userId] = c;
+}
+/** Passa celus reservados de uma pessoa para outra (falta no encontro, troca entregue). */
+export function pagarReservado(d: DB, de: string, para: string, v: number, txt: string) {
+  if (v <= 0) return;
+  const a = carteiraDe(d, de);
+  a.reservado = Math.max(0, (a.reservado ?? 0) - v);
+  a.hist.unshift({ t: Date.now(), txt: `Pago: ${txt}`, v: 0 });
+  d.carteiras[de] = a;
+  if (para.startsWith('demo-') || para === 'celus-demo') return;
+  const b = carteiraDe(d, para);
+  b.saldo += v; b.hist.unshift({ t: Date.now(), txt: `Recebido: ${txt}`, v });
+  d.carteiras[para] = b;
 }

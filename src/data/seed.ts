@@ -1,6 +1,6 @@
 // Dados FICTÍCIOS para desenvolvimento, usados enquanto o Supabase não está configurado.
 // As posições são deslocamentos em km a partir do centro da cidade piloto.
-import type { Anuncio } from './types';
+import type { Anuncio, Comunidade, Encontro, Troca } from './types';
 import { centroPiloto } from '../lib/geo';
 
 export function agendaPadrao(tipo: Anuncio['tipoPreco']): Anuncio['agenda'] {
@@ -54,4 +54,31 @@ export function anunciosFicticios(): Anuncio[] {
     lat: c.lat - dy * kmLat,
     lng: c.lng + dx * kmLng,
   }));
+}
+
+/** Comunidades, encontros e trocas de exemplo (fictícios). */
+export function sementesComunidade(): { comunidades: Comunidade[]; encontros: Encontro[]; trocas: Troca[] } {
+  const c = centroPiloto();
+  const kmLat = 1 / 110.574, kmLng = 1 / (111.32 * Math.cos((c.lat * Math.PI) / 180));
+  const em = (dx: number, dy: number) => ({ lat: c.lat - dy * kmLat, lng: c.lng + dx * kmLng });
+  const dia = (n: number, h: number, m = 0) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, m, 0, 0); return d.getTime(); };
+  const comunidades: Comunidade[] = [
+    { id: 'c1', nome: 'Corrida no Parque', atividade: 'Corrida', descricao: 'Treinos leves e longos para todos os ritmos. Ninguém fica para trás.', regras: 'Chegue 10 minutos antes. Leve água.', ...em(-0.4, -0.9), bairro: 'Jardim', criadorId: 'demo-rafa', membros: [], membrosBase: 186, criadoEm: 0 },
+    { id: 'c2', nome: 'Calistenia na Praça', atividade: 'Calistenia', descricao: 'Barras, paralelas e muito incentivo. Iniciantes são muito bem-vindos.', regras: 'Respeite a vez nas barras.', ...em(0.5, 0.3), bairro: 'Centro', criadorId: 'demo-duda', membros: [], membrosBase: 74, criadoEm: 0 },
+    { id: 'c3', nome: 'Trilha de Domingo', atividade: 'Trilha', descricao: 'Trilhas de nível fácil e médio perto da cidade, com carona combinada no grupo.', regras: 'Calçado fechado e protetor solar.', ...em(1.1, -1.2), bairro: 'Canto', criadorId: 'demo-leo', membros: [], membrosBase: 121, criadoEm: 0 },
+    { id: 'c4', nome: 'Futevôlei na Areia', atividade: 'Futevôlei', descricao: 'Rachões no fim da tarde. Todos os níveis.', regras: 'Bola de cada um, rede do grupo.', ...em(-1, 0.7), bairro: 'Vila', criadorId: 'demo-bia', membros: [], membrosBase: 58, criadoEm: 0 },
+  ];
+  const encontros: Encontro[] = [
+    { id: 'e1', comunidadeId: 'c1', organizadorId: 'demo-rafa', titulo: 'Longão de sábado, 8 km', descricao: 'Ritmo confortável, volta no lago.', local: 'Portão principal do parque', inicio: dia(2, 7), fim: dia(2, 8, 30), vagas: 40, caucao: 0, prazoCancelH: 2, presencas: [] },
+    { id: 'e2', comunidadeId: 'c2', organizadorId: 'demo-duda', titulo: 'Aula experimental de calistenia', descricao: 'Primeira aula com a Duda: aquecimento, base e primeira barra.', local: 'Barras da praça central', inicio: dia(1, 18), fim: dia(1, 19), vagas: 8, caucao: 50, prazoCancelH: 6, presencas: [] },
+    { id: 'e3', comunidadeId: 'c3', organizadorId: 'demo-leo', titulo: 'Trilha da Pedra, nível fácil', descricao: 'Cerca de 2 h de caminhada com mirante no fim.', local: 'Estacionamento da entrada da trilha', inicio: dia(3, 7, 30), fim: dia(3, 11), vagas: 20, caucao: 30, prazoCancelH: 12, presencas: [] },
+  ];
+  const trocas: Troca[] = [
+    { id: 't1', donoId: 'demo-marta', titulo: 'Mudas de costela-de-adão', descricao: 'Tenho três mudas enraizadas, em vasinho.', estado: 'novo', preco: 15, fotos: [], ...em(0.2, -0.3), bairro: 'Centro', criadoEm: Date.now() - 2 * 3600_000, status: 'disponivel' },
+    { id: 't2', donoId: 'demo-joao', titulo: 'Geladeira antiga funcionando', descricao: 'Funciona, só faz um barulho. Quem levar retira aqui, não tenho como entregar.', estado: 'usado', preco: 0, fotos: [], ...em(-0.6, 0.4), bairro: 'Vila', criadoEm: Date.now() - 26 * 3600_000, status: 'disponivel' },
+    { id: 't3', donoId: 'demo-carla', titulo: 'Cama de solteiro com estrado', descricao: 'Madeira boa, um pé com marca. Desmontada.', estado: 'usado', preco: 40, fotos: [], ...em(0.9, 0.5), bairro: 'Centro', criadoEm: Date.now() - 5 * 3600_000, status: 'disponivel' },
+    { id: 't4', donoId: 'demo-paulo', titulo: 'Caixa de brinquedos de bebê', descricao: 'Chocalhos, blocos e livrinhos de pano, tudo lavado.', estado: 'usado', preco: 25, fotos: [], ...em(-0.3, -1.1), bairro: 'Jardim', criadoEm: Date.now() - 50 * 3600_000, status: 'disponivel' },
+    { id: 't5', donoId: 'demo-ana', titulo: 'Bicicleta aro 26 precisando de câmara', descricao: 'Quadro ótimo, pneu traseiro furado.', estado: 'usado', preco: 120, fotos: [], ...em(1.2, -0.6), bairro: 'Jardim', criadoEm: Date.now() - 8 * 3600_000, status: 'disponivel' },
+  ];
+  return { comunidades, encontros, trocas };
 }

@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react';
-import { avisosDeEventos, concluirEventosPassados } from '../store/acoes';
+import { avisosDeEventos, concluirEventosPassados, encerrarEncontrosPassados } from '../store/acoes';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDB, useUsuario } from '../store/db';
 import { cobranca } from '../lib/regras';
@@ -18,6 +18,9 @@ const PROCURAR = [
   { to: '/chat', nome: 'Chat', d: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></> },
   { to: '/perfil', nome: 'Perfil', d: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></> },
 ];
+/** Telas que se abrem a partir do Perfil: a aba Perfil continua acesa. */
+const DENTRO_DO_PERFIL = /^\/(comunidade|trocas|troca|pessoa|celus)(\/|$)/;
+
 const RENDA = [
   { to: '/renda', nome: 'Painel', d: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
   { to: '/renda/anunciar', nome: 'Anunciar', d: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></> },
@@ -54,7 +57,7 @@ function Sino() {
 
 export function Layout() {
   const u = useUsuario();
-  useEffect(() => { concluirEventosPassados(); avisosDeEventos(); }, []);
+  useEffect(() => { concluirEventosPassados(); avisosDeEventos(); encerrarEncontrosPassados(); }, []);
   const loc = useLocation();
   // Cada tela nova começa do topo.
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
@@ -79,7 +82,7 @@ export function Layout() {
         {mostrarEmUso && <div className="live-wrap"><EmUso /></div>}
         <nav className="tabs" style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }} aria-label="Navegação">
           {abas.map((a) => (
-            <NavLink key={a.to} to={a.to} end={a.to === '/' || a.to === '/renda'}>{ic(a.d)}{a.nome}</NavLink>
+            <NavLink key={a.to} to={a.to} end={a.to === '/' || a.to === '/renda'} className={({ isActive }) => (isActive || (a.to === '/perfil' && DENTRO_DO_PERFIL.test(loc.pathname)) ? 'active' : '')}>{ic(a.d)}{a.nome}</NavLink>
           ))}
         </nav>
         <Toasts />

@@ -1,10 +1,10 @@
-import type { Anuncio, Extra, Ingresso, Pacote, Reserva } from '../data/types';
+import type { Anuncio, Encontro, Extra, Ingresso, Pacote, Reserva } from '../data/types';
 import { distanciaKm, type Ponto } from '../lib/geo';
 import {
   CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, MAX_INGRESSOS_COMPRA, TAXA_INGRESSO, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
   bloqueadoPorConferencia, celulaSemaforo, pedePagamentoPorFora, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
-import { carteiraDe, ganhar, ler, mudar, notificar, novoId, type DB } from './db';
+import { carteiraDe, devolverCelus, ganhar, ler, mudar, notificar, novoId, pagarReservado, reservarCelus, type DB } from './db';
 
 const DIA = 86_400_000;
 const quandoTxt = (t: number) => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -38,8 +38,9 @@ export async function cadastrar(dados: { nome: string; email: string; senha: str
   const senhaHash = await hash(dados.senha);
   const id = novoId();
   mudar((d) => {
-    d.usuarios[id] = { id, nome: dados.nome.trim(), email, senhaHash, nascimento: dados.nascimento, verificacao: 'nao_enviado', equipeCelus: false, albumPublico: false, criadoEm: Date.now() };
+    d.usuarios[id] = { id, nome: dados.nome.trim(), email, senhaHash, nascimento: dados.nascimento, verificacao: 'nao_enviado', equipeCelus: false, albumPublico: false, criadoEm: Date.now(), privacidade: { comunidades: true, eventos: true, lugares: false } };
     d.sessao = id;
+    ganhar(d, id, 'boasvindas', 'Boas-vindas à Celus');
   });
   return { ok: true };
 }
@@ -751,3 +752,172 @@ export async function excluirConta(senha: string): Promise<Resultado> {
   });
   return { ok: true };
 }
+
+/* ---------- Comunidades e encontros ---------- */
+const precisaVerificado = () => { const d = ler(); const u = d.sessao ? d.usuarios[d.sessao] : null; return !u ? 'Entre na sua conta.' : u.verificacao !== 'verificado' ? 'Verifique sua identidade para participar.' : !u.foto ? SEM_FOTO : null; };
+
+export function alternarComunidade(id: string): Resultado {
+  const uid = sessao(); if (!uid) return falha('Entre na sua conta.');
+  mudar((d) => { const c = d.comunidades.find((x) => x.id === id); if (!c) return; c.membros = c.membros.includes(uid) ? c.membros.filter((x) => x !== uid) : [...c.membros, uid]; });
+  return { ok: true };
+}
+
+export function criarComunidade(dados: { nome: string; atividade: string; descricao: string; regras: string; bairro: string; lat: number; lng: number }): { ok: true; id: string } | { ok: false; erro: string } {
+  const e = precisaVerificado(); if (e) return { ok: false, erro: e };
+  if (dados.nome.trim().length < 4) return { ok: false, erro: 'Dê um nome à comunidade.' };
+  if (!dados.atividade.trim()) return { ok: false, erro: 'Qual é a atividade?' };
+  const textos = `${dados.nome} ${dados.descricao} ${dados.regras}`;
+  if (moderar(textos) || pedePagamentoPorFora(textos)) return { ok: false, erro: 'Tire do texto contato, link ou pedido de pagamento fora do app.' };
+  const uid = sessao()!; const id = novoId();
+  mudar((d) => { d.comunidades.unshift({ id, ...dados, nome: dados.nome.trim(), atividade: dados.atividade.trim(), descricao: dados.descricao.trim(), regras: dados.regras.trim(), criadorId: uid, membros: [uid], criadoEm: Date.now() }); });
+  return { ok: true, id };
+}
+
+export function criarEncontro(dados: Omit<Encontro, 'id' | 'organizadorId' | 'presencas' | 'encerrado'>): Resultado {
+  const e = precisaVerificado(); if (e) return falha(e);
+  const uid = sessao()!;
+  const c = ler().comunidades.find((x) => x.id === dados.comunidadeId); if (!c) return falha('Comunidade não encontrada.');
+  if (!c.membros.includes(uid) && c.criadorId !== uid) return falha('Entre na comunidade para criar encontros.');
+  if (dados.titulo.trim().length < 4) return falha('Dê um título ao encontro.');
+  if (!dados.inicio || dados.inicio < Date.now()) return falha('Escolha uma data a partir de agora.');
+  if (dados.caucao < 0 || dados.caucao > 500) return falha('A caução vai de 0 a 500 celus.');
+  if (moderar(`${dados.titulo} ${dados.descricao}`)) return falha('Tire do texto contato ou link.');
+  mudar((d) => {
+    const enc: Encontro = { ...dados, id: novoId(), organizadorId: uid, presencas: [], titulo: dados.titulo.trim() };
+    d.encontros.push(enc);
+    c.membros.filter((m) => m !== uid).forEach((m) => notificar(d, m, `${c.nome}: novo encontro "${enc.titulo}".`, `/comunidade/${c.id}`));
+  });
+  return { ok: true };
+}
+
+/** Confirmar presença. Com caução, os celus ficam reservados até o encontro. */
+export function confirmarEncontro(id: string): Resultado {
+  const e = precisaVerificado(); if (e) return falha(e);
+  const uid = sessao()!; const d0 = ler();
+  const en = d0.encontros.find((x) => x.id === id); if (!en) return falha('Encontro não encontrado.');
+  if (en.organizadorId === uid) return falha('Você organiza este encontro.');
+  if (Date.now() > en.inicio) return falha('Este encontro já começou.');
+  const ativos = en.presencas.filter((p) => p.status === 'confirmado' || p.status === 'presente');
+  if (ativos.some((p) => p.userId === uid)) return falha('Você já confirmou.');
+  if (ativos.length >= en.vagas) return falha('As vagas acabaram.');
+  if (en.caucao > carteiraDe(d0, uid).saldo) return falha(`Você precisa de ${en.caucao} celus disponíveis para a caução.`);
+  mudar((d) => {
+    const x = d.encontros.find((y) => y.id === id)!;
+    if (!reservarCelus(d, uid, x.caucao, x.titulo)) return;
+    x.presencas = x.presencas.filter((p) => p.userId !== uid);
+    x.presencas.push({ userId: uid, t: Date.now(), codigo: codigo(), status: 'confirmado' });
+    notificar(d, x.organizadorId, `${d.usuarios[uid]?.nome.split(' ')[0]} confirmou presença em "${x.titulo}".`, `/comunidade/${x.comunidadeId}`);
+  });
+  return { ok: true };
+}
+
+/** Cancelar a presença: dentro do prazo, a caução volta; fora do prazo, vai para quem organiza. */
+export function cancelarPresenca(id: string): { ok: true; perdeu: number } | { ok: false; erro: string } {
+  const uid = sessao(); if (!uid) return { ok: false, erro: 'Entre na sua conta.' };
+  const en = ler().encontros.find((x) => x.id === id); if (!en) return { ok: false, erro: 'Encontro não encontrado.' };
+  const p = en.presencas.find((x) => x.userId === uid && x.status === 'confirmado'); if (!p) return { ok: false, erro: 'Você não está confirmado.' };
+  const noPrazo = en.inicio - Date.now() >= en.prazoCancelH * 3600_000;
+  mudar((d) => {
+    const x = d.encontros.find((y) => y.id === id)!; const q = x.presencas.find((y) => y.userId === uid && y.status === 'confirmado')!;
+    q.status = 'cancelado';
+    if (noPrazo) devolverCelus(d, uid, x.caucao, x.titulo);
+    else { pagarReservado(d, uid, x.organizadorId, x.caucao, `cancelamento fora do prazo em "${x.titulo}"`); notificar(d, x.organizadorId, `Cancelamento fora do prazo em "${x.titulo}". Você recebeu ${x.caucao} celus.`, `/comunidade/${x.comunidadeId}`); }
+  });
+  return { ok: true, perdeu: noPrazo ? 0 : en.caucao };
+}
+
+/** Quem organiza confere o código de quem chegou: a caução volta para a pessoa. */
+export function marcarPresenca(id: string, digitado: string, demo = false): { ok: true; nome: string } | { ok: false; erro: string } {
+  const d0 = ler(); const uid = d0.sessao;
+  const en = d0.encontros.find((x) => x.id === id); if (!en) return { ok: false, erro: 'Encontro não encontrado.' };
+  if (demo ? !en.organizadorId.startsWith('demo-') : en.organizadorId !== uid) return { ok: false, erro: 'Só quem organiza confere a chegada.' };
+  const p = en.presencas.find((x) => x.codigo === digitado.trim() && x.status === 'confirmado');
+  if (!p) return { ok: false, erro: 'Código não encontrado ou já conferido.' };
+  mudar((d) => {
+    const x = d.encontros.find((y) => y.id === id)!; const q = x.presencas.find((y) => y.codigo === p.codigo)!;
+    q.status = 'presente'; devolverCelus(d, q.userId, x.caucao, x.titulo);
+    notificar(d, q.userId, x.caucao ? `Presença confirmada em "${x.titulo}". Seus ${x.caucao} celus voltaram.` : `Presença confirmada em "${x.titulo}".`, `/comunidade/${x.comunidadeId}`);
+  });
+  return { ok: true, nome: d0.usuarios[p.userId]?.nome ?? 'Participante' };
+}
+
+/** Encerrar: quem confirmou e não apareceu perde a caução para quem organizou. Encontros passados encerram sozinhos. */
+export function encerrarEncontro(id: string) {
+  mudar((d) => {
+    const x = d.encontros.find((y) => y.id === id); if (!x || x.encerrado) return;
+    x.encerrado = true;
+    for (const p of x.presencas) if (p.status === 'confirmado') {
+      p.status = 'faltou';
+      pagarReservado(d, p.userId, x.organizadorId, x.caucao, `falta em "${x.titulo}"`);
+      notificar(d, p.userId, x.caucao ? `Você não compareceu a "${x.titulo}". A caução de ${x.caucao} celus foi para quem organizou.` : `Você não compareceu a "${x.titulo}".`, `/comunidade/${x.comunidadeId}`);
+    }
+  });
+}
+export function encerrarEncontrosPassados() {
+  const agora = Date.now();
+  ler().encontros.filter((e) => !e.encerrado && agora > e.fim + 3600_000).forEach((e) => encerrarEncontro(e.id));
+}
+
+/* ---------- Trocas ---------- */
+const PROIBIDOS = /(arma|muni[cç][aã]o|rem[eé]dio|medicamento|tarja|cigarro|vape|bebida alco|cerveja|vinho|animal|filhote|cachorro|gato|p[aá]ssaro|documento|chip|celular bloqueado)/i;
+
+export function anunciarTroca(dados: { titulo: string; descricao: string; estado: 'novo' | 'usado'; preco: number; fotos: string[]; bairro: string; lat: number; lng: number }): Resultado {
+  const e = precisaVerificado(); if (e) return falha(e);
+  if (dados.titulo.trim().length < 3) return falha('Diga o que é o item.');
+  if (!dados.fotos.length) return falha('Coloque pelo menos uma foto do item.');
+  if (dados.preco < 0 || dados.preco > 5000) return falha('O valor vai de 0 (doação) a 5.000 celus.');
+  const texto = `${dados.titulo} ${dados.descricao}`;
+  if (PROIBIDOS.test(texto)) return falha('Esse tipo de item não pode ser trocado na Celus (armas, remédios, bebidas, cigarros, animais, documentos).');
+  if (moderar(texto) || pedePagamentoPorFora(texto)) return falha('Tire do texto contato, link ou pedido de pagamento fora do app.');
+  const uid = sessao()!;
+  mudar((d) => { d.trocas.unshift({ id: novoId(), donoId: uid, ...dados, titulo: dados.titulo.trim(), descricao: dados.descricao.trim(), criadoEm: Date.now(), status: 'disponivel' }); });
+  return { ok: true };
+}
+
+/** "Quero": os celus ficam reservados até a retirada. */
+export function quererTroca(id: string): Resultado {
+  const e = precisaVerificado(); if (e) return falha(e);
+  const uid = sessao()!; const d0 = ler();
+  const t = d0.trocas.find((x) => x.id === id); if (!t || t.status !== 'disponivel') return falha('Este item não está mais disponível.');
+  if (t.donoId === uid) return falha('Este item é seu.');
+  if (carteiraDe(d0, uid).saldo < t.preco) return falha(`Você precisa de ${t.preco} celus disponíveis.`);
+  mudar((d) => {
+    const x = d.trocas.find((y) => y.id === id)!;
+    if (!reservarCelus(d, uid, x.preco, x.titulo)) return;
+    x.status = 'reservado'; x.compradorId = uid; x.codigo = codigo(); x.reservadoEm = Date.now();
+    notificar(d, x.donoId, `${d.usuarios[uid]?.nome.split(' ')[0]} quer "${x.titulo}". Combine a retirada e confira o código na entrega.`, `/troca/${x.id}`);
+  });
+  return { ok: true };
+}
+
+export function desistirTroca(id: string) {
+  const uid = sessao(); if (!uid) return;
+  mudar((d) => {
+    const x = d.trocas.find((y) => y.id === id); if (!x || x.status !== 'reservado' || (x.compradorId !== uid && x.donoId !== uid)) return;
+    devolverCelus(d, x.compradorId!, x.preco, x.titulo);
+    notificar(d, x.compradorId === uid ? x.donoId : x.compradorId, `A troca de "${x.titulo}" foi desfeita.${x.preco ? ' Os celus voltaram para quem tinha reservado.' : ''}`, `/troca/${x.id}`);
+    x.status = 'disponivel'; x.compradorId = undefined; x.codigo = undefined; x.reservadoEm = undefined;
+  });
+}
+
+/** Na retirada, quem entrega digita o código de quem recebe: só então os celus passam. */
+export function confirmarRetirada(id: string, digitado: string, demo = false): Resultado {
+  const d0 = ler(); const uid = d0.sessao;
+  const t = d0.trocas.find((x) => x.id === id); if (!t || t.status !== 'reservado') return falha('Nada para confirmar.');
+  if (demo ? !t.donoId.startsWith('demo-') : t.donoId !== uid) return falha('Só quem entrega confere o código.');
+  if (digitado.trim() !== t.codigo) return falha('Código errado.');
+  mudar((d) => {
+    const x = d.trocas.find((y) => y.id === id)!;
+    pagarReservado(d, x.compradorId!, x.donoId, x.preco, `troca de "${x.titulo}"`);
+    x.status = 'entregue'; x.entregueEm = Date.now();
+    notificar(d, x.compradorId, `Retirada de "${x.titulo}" confirmada. Bom proveito!`, `/troca/${x.id}`);
+    notificar(d, x.donoId, x.preco ? `Você recebeu ${x.preco} celus por "${x.titulo}".` : `Doação de "${x.titulo}" concluída. Obrigado por dar outra vida ao item.`, `/troca/${x.id}`);
+  });
+  return { ok: true };
+}
+
+export const removerTroca = (id: string) => mudar((d) => { const x = d.trocas.find((y) => y.id === id); if (x && x.donoId === d.sessao && x.status === 'disponivel') x.status = 'removido'; });
+export const denunciarTroca = (id: string) => mudar((d) => { const x = d.trocas.find((y) => y.id === id); if (x) { x.denuncias = (x.denuncias ?? 0) + 1; if (x.denuncias >= 3 && x.status === 'disponivel') x.status = 'removido'; } });
+
+/* ---------- Privacidade do perfil ---------- */
+export const alternarPrivacidade = (bloco: 'comunidades' | 'eventos' | 'lugares') => { const id = sessao(); if (id) mudar((d) => { const u = d.usuarios[id]; const p = u.privacidade ?? { comunidades: true, eventos: true, lugares: false }; u.privacidade = { ...p, [bloco]: !p[bloco] }; }); };
