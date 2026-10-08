@@ -151,6 +151,12 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
 - LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).
 
+## Ideias em discussão (outubro de 2026, aguardando decisão)
+- **Comunidades** (estilo comunidades do Orkut): grupos por atividade e lugar (calistenia, corrida, trilha, futevôlei...), achados no mapa e por quem chega na cidade, sem depender de grupo de WhatsApp. Proposta: aba "Comunidades" que junta as comunidades perto e o chat da região.
+- **Perfil sem seguidores:** mostra comunidades, eventos e lugares em que a pessoa esteve, cada bloco com opção de visível ou oculto. Proposta: lugares visitados ocultos por padrão e nunca em tempo real (segurança).
+- **Currículo de freelancer:** histórico de trabalhos e estrelas visível só para quem está contratando; locais também ganham nota de "bom para trabalhar como freelancer".
+- **Aula experimental com celus:** em vez de pagamento em celus entre pessoas, proposta de "reserva com caução": a pessoa bloqueia celus para garantir a vaga, recebe de volta ao comparecer (código de chegada) e perde se faltar (os celus somem, não vão para ninguém). Quem oferece a aula pode ganhar celus da própria Celus por aluno presente. Evita fixar celus ao real e transferir pontos entre pessoas.
+
 ## Ideias para depois (registradas, não construir agora)
 - **Plataforma de pontos própria, no modelo de coalizão (referência citada pela fundadora: Stix).** Uma plataforma só para os celus, separada do app: empresas compram pacotes de celus para dar aos clientes (lojas físicas e também comércios digitais), as pessoas acumulam em vários parceiros e trocam num catálogo de produtos, como um "Mercado Livre de pontos".
   - Primeiro passo possível dentro do app: "locais geram celus" com modo Caixa para o lojista, venda de pacotes e validade dos pontos.
