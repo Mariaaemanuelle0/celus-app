@@ -80,6 +80,7 @@ function carregar(): DB {
         db.interesses ??= [];
         db.suporte ??= [];
         if (!db.comunidades) Object.assign(db, sementesComunidade());
+        db.trocas?.forEach((t) => { if (t.preco < 5 && t.status === 'disponivel') t.preco = t.id === 't2' ? 30 : 5; });
         for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
         return db;
       }
@@ -131,6 +132,11 @@ export function carteiraDe(d: DB, userId: string): Carteira {
 export function ganhar(d: DB, userId: string, chave: string, txt: string, vezes = 1): number {
   const regra = GANHOS.find((g) => g.chave === chave);
   if (!regra) return 0;
+  if (regra.unico) {
+    const u = d.usuarios[userId]; if (!u) return 0;
+    if (u.bonus?.includes(chave)) return 0;
+    u.bonus = [...(u.bonus ?? []), chave];
+  }
   const c = carteiraDe(d, userId);
   if (c.hoje.dia !== hojeStr()) c.hoje = { dia: hojeStr(), contagem: {} };
   const ja = c.hoje.contagem[chave] ?? 0;

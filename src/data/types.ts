@@ -90,6 +90,9 @@ export type Usuario = {
   comissaoReduzidaAte?: number;
   /** Última forma de pagamento usada: vira a escolha padrão na próxima (pagar rápido). */
   ultimoPagamento?: 'pix' | 'cartao';
+  /** Bônus únicos já pagos (ex.: perfil completo) e mês do último bônus de boa nota (AAAA-MM). */
+  bonus?: string[];
+  bonusNotaMes?: string;
   /** Blocos do perfil que outras pessoas podem ver. */
   privacidade?: { comunidades: boolean; eventos: boolean; lugares: boolean };
   /** Onde quem anuncia recebe os repasses. */

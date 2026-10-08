@@ -48,6 +48,7 @@ export function PerfilPage() {
         </div>
       </div>
       {u.bio ? <p className="desc" style={{ margin: '12px 0 0' }}>{u.bio}</p> : null}
+      {!u.bonus?.includes('perfil') && u.foto && u.verificacao === 'verificado' && <Link to="/perfil/editar" className="alerta ok" style={{ display: 'block', marginTop: 12, textDecoration: 'none', color: 'var(--text)' }}><b>Complete seu perfil e ganhe 50 celus.</b> Falta escrever sua bio.</Link>}
       <Link to="/perfil/editar" className="btn sm ghost" style={{ marginTop: 12 }}>{u.foto ? 'Editar perfil' : 'Tirar selfie para o perfil'}</Link>
       {verStories && <Visualizador lista={meusStories} fechar={() => setVerStories(false)} />}
       {!u.foto && <Link to="/perfil/editar" className="alerta warn" style={{ display: 'block', marginTop: 14, textDecoration: 'none', color: 'var(--text)' }}><b>Falta a foto do seu rosto.</b> Sem ela não dá para reservar, chamar profissional nem anunciar.</Link>}
@@ -65,7 +66,7 @@ export function PerfilPage() {
         </Link>
         <Link to="/trocas" className="box entrada">
           <span className="entrada-ic feira-cor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9l1.5-5h13L20 9" /><path d="M4 9c0 1.7 1.3 3 3 3s2.7-1.3 2.7-3c0 1.7 1.3 3 2.3 3s2.3-1.3 2.3-3c0 1.7 1 3 2.7 3s3-1.3 3-3" /><path d="M5.5 12v8h13v-8" /></svg></span>
-          <b>{NOME_TROCAS}</b><span className="hint">Troque por celus ou doe</span>
+          <b>{NOME_TROCAS}</b><span className="hint">Troque o que não usa por celus</span>
         </Link>
       </div>
 
@@ -177,11 +178,11 @@ export function CelusPage() {
       ))}
       <h2>Outros usos</h2>
       <div className="stack">
-        <Link to="/trocas" className="box linha" style={{ color: 'var(--text)', textDecoration: 'none' }}><div className="sp"><b>{NOME_TROCAS}</b><div className="hint">Pegue itens de quem não usa mais. Quem entrega recebe seus celus.</div></div><span>›</span></Link>
+        <Link to="/trocas" className="box linha" style={{ color: 'var(--text)', textDecoration: 'none' }}><div className="sp"><b>{NOME_TROCAS}</b><div className="hint">Pegue itens de quem não usa mais e anuncie os seus. Quem entrega recebe os celus.</div></div><span>›</span></Link>
         <Link to="/comunidade" className="box linha" style={{ color: 'var(--text)', textDecoration: 'none' }}><div className="sp"><b>Caução de encontros</b><div className="hint">Confirme presença em aulas e encontros. Foi, os celus voltam. Faltou sem cancelar no prazo, vão para quem organizou.</div></div><span>›</span></Link>
       </div>
       <h2>Como ganhar</h2>
-      <div className="box" style={{ padding: '4px 14px' }}>{GANHOS.map((g) => <div key={g.chave} className="sumline"><span>{g.txt}{g.limite ? <span className="hint">, até {g.limite} por dia</span> : null}</span><span style={{ color: 'var(--accent-2)' }}>+{g.v}</span></div>)}</div>
+      <div className="box" style={{ padding: '4px 14px' }}>{GANHOS.map((g) => <div key={g.chave} className="sumline"><span>{g.txt}<span className="hint">{g.limite ? `, até ${g.limite} por dia` : g.unico ? ', uma vez' : g.mensal ? ', todo mês' : ''}</span>{(g.unico && usuario?.bonus?.includes(g.chave)) || (g.mensal && usuario?.bonusNotaMes === new Date().toISOString().slice(0, 7)) ? <span className="hint" style={{ color: 'var(--ok)' }}> (feito)</span> : null}</span><span style={{ color: 'var(--accent-2)' }}>+{g.v}</span></div>)}</div>
       <h2>Extrato</h2>
       {c?.hist.length ? <div className="box" style={{ padding: '4px 14px' }}>{c.hist.slice(0, 30).map((h, i) => <div key={i} className="sumline"><span>{h.txt}<div className="hint">{quando(h.t)}</div></span><span style={{ color: h.v > 0 ? 'var(--ok)' : 'var(--muted)' }}>{h.v > 0 ? '+' : ''}{h.v || ''}</span></div>)}</div>
         : <div className="empty">Você ainda não ganhou celus. Reserve, avalie ou marque o semáforo para começar.</div>}
@@ -207,7 +208,7 @@ export function EditarPerfil() {
         </div>
       </div>
       <label className="campo" style={{ marginTop: 18 }}>Bio<textarea id="p-bio" rows={3} maxLength={160} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Ex.: Designer, moro no Centro, uso a Celus entre reuniões." /><span className="hint">{bio.length}/160</span></label>
-      <button className="btn" style={{ marginTop: 16 }} disabled={!foto} onClick={() => { atualizarPerfil({ foto, bio }); toast('Perfil atualizado'); nav('/perfil'); }}>Salvar</button>
+      <button className="btn" style={{ marginTop: 16 }} disabled={!foto} onClick={() => { const g = atualizarPerfil({ foto, bio }); toast(g ? `Perfil completo. +${g} celus` : 'Perfil atualizado'); nav('/perfil'); }}>Salvar</button>
     </>
   );
 }

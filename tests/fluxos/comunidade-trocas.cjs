@@ -11,7 +11,7 @@ await step('comunidade',async()=>{await p.goto(U+'/perfil');await p.click('.entr
   await p.screenshot({path:O+'comunidade.png',fullPage:true});
   expect('saldo com caução',await saldo(),50);log('guardados:',await p.textContent('.walletmini .hint'));
   await p.goto(U+'/comunidade');await p.click('.comu:has-text("Calistenia")');await p.click('text=Simular conferência do código');await p.waitForTimeout(200);
-  expect('caução devolvida',await saldo(),100);});
+  expect('caução devolvida + 5 de presença',await saldo(),105);});
 await step('cancelar fora do prazo',async()=>{await p.goto(U+'/comunidade');await p.click('.comu:has-text("Trilha")');await p.click('button:has-text("Participar")');
   await p.click('button:has-text("Confirmar presença")');await p.waitForTimeout(200);const s1=await saldo();
   await p.evaluate(()=>{const d=JSON.parse(localStorage.getItem('celus-db-v1'));const e=d.encontros.find(x=>x.id==='e3');e.prazoCancelH=9999;localStorage.setItem('celus-db-v1',JSON.stringify(d));});
@@ -25,9 +25,11 @@ await step('achados',async()=>{await p.goto(U+'/perfil');await p.click('.entrada
   await p.click('.troca:has-text("Cama")');await p.click('button:has-text("Quero por 40 celus")');await p.waitForTimeout(200);log('codigo:',await p.textContent('.code'));
   await p.click('text=Simular retirada');await p.waitForTimeout(200);log('estado:',await p.textContent('.alerta'));
   const s=Number(await saldo());log('saldo depois da cama',s);
-  await p.goto(U+'/trocas');await p.click('.seg >> text=Doações');log('doações:',await p.$$eval('.troca .t',e=>e.map(x=>x.textContent)));});
+  log('sem doação na vitrine:',!(await p.$('text=Doação')));});
 await step('anunciar item',async()=>{await p.goto(U+'/trocas/nova');await p.setInputFiles('#nt-foto',S+'/foto.jpg');await p.fill('#nt-titulo','Vape usado');await p.click('button:has-text("Publicar")');log('proibido:',await p.textContent('.erro'));
-  await p.fill('#nt-titulo','Mudas de espada-de-são-jorge');await p.fill('#nt-preco','10');await p.fill('#nt-bairro','Enseada');await p.click('button:has-text("Publicar")');await p.waitForURL('**/trocas');await p.click('.seg >> text=Minhas');log('minhas:',await p.$$eval('.troca .t',e=>e.map(x=>x.textContent)));});
+  await p.fill('#nt-titulo','Mudas de espada-de-são-jorge');await p.fill('#nt-preco','0');await p.click('button:has-text("Publicar")');log('valor zero:',await p.textContent('.erro'));await p.fill('#nt-preco','10');await p.fill('#nt-bairro','Enseada');await p.click('button:has-text("Publicar")');await p.waitForURL('**/trocas');log('toast feira:',await p.textContent('.toast'));await p.click('.seg >> text=Minhas');log('minhas:',await p.$$eval('.troca .t',e=>e.map(x=>x.textContent)));});
+await step('perfil completo',async()=>{await p.goto(U+'/perfil');await p.waitForSelector('.walletmini');log('convite bio:',!!(await p.$('text=Complete seu perfil')));const s0=Number(await saldo());await p.goto(U+'/perfil/editar');await p.fill('#p-bio','Corro na Enseada e cuido de plantas.');await p.click('button:has-text("Salvar")');await p.waitForTimeout(200);log('toast perfil:',await p.textContent('.toast'));expect('bônus perfil',Number(await saldo())-s0,50);
+  await p.goto(U+'/perfil/editar');await p.click('button:has-text("Salvar")');await p.waitForTimeout(200);expect('bônus só uma vez',Number(await saldo())-s0,50);});
 await step('perfil publico',async()=>{await p.goto(U+'/perfil');await p.screenshot({path:O+'perfil.png',fullPage:true});await p.click('text=Ver como os outros veem');await p.waitForURL('**/pessoa/**');await p.waitForSelector('.avatar');log('blocos:',await p.$$eval('h2',e=>e.map(x=>x.textContent)));
   await p.goto(U+'/perfil');await p.locator('.sumline.priv input').nth(0).uncheck();await p.click('text=Ver como os outros veem');await p.waitForURL('**/pessoa/**');await p.waitForSelector('.avatar');log('blocos sem comunidades:',await p.$$eval('h2',e=>e.map(x=>x.textContent)));});
 await step('carteira',async()=>{await p.goto(U+'/celus');await p.waitForSelector('.walletcard');log('h2:',await p.$$eval('h2',e=>e.map(x=>x.textContent)));log('extrato:',await p.$$eval('.sumline span:first-child',e=>e.slice(-6).map(x=>x.textContent.slice(0,50))));});

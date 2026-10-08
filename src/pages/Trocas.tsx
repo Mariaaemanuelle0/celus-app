@@ -7,11 +7,12 @@ import { carteiraDe, useDB, useUsuario } from '../store/db';
 import type { Troca } from '../data/types';
 
 import { NOME_TROCAS } from '../lib/perfil';
+import { FEIRA_MIN } from '../lib/regras';
 
 const quando = (t: number) => { const m = Math.round((Date.now() - t) / 60_000); return m < 60 ? `há ${Math.max(1, m)} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} dias`; };
 
 function Valor({ t }: { t: Troca }) {
-  return t.preco ? <span className="troca-preco"><Moeda tamanho={14} /> <span className="num">{t.preco}</span></span> : <span className="troca-preco doacao">Doação</span>;
+  return <span className="troca-preco"><Moeda tamanho={14} /> <span className="num">{t.preco}</span></span>;
 }
 
 function Foto({ t, grande }: { t: Troca; grande?: boolean }) {
@@ -24,12 +25,11 @@ export function Trocas() {
   const u = useUsuario()!;
   const onde = useLocalizacao() ?? centroPiloto();
   const trocas = useDB((d) => d.trocas);
-  const [filtro, setFiltro] = useState<'tudo' | 'doacao' | 'minhas'>('tudo');
+  const [filtro, setFiltro] = useState<'tudo' | 'minhas'>('tudo');
   const [q, setQ] = useState('');
   const termo = q.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const lista = useMemo(() => trocas
     .filter((t) => filtro === 'minhas' ? (t.donoId === u.id || t.compradorId === u.id) && t.status !== 'removido' : t.status === 'disponivel' && t.donoId !== u.id)
-    .filter((t) => filtro !== 'doacao' || t.preco === 0)
     .filter((t) => !termo || `${t.titulo} ${t.descricao} ${t.bairro}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(termo))
     .map((t) => ({ t, d: distanciaKm(onde, t) }))
     .sort((a, b) => filtro === 'minhas' ? b.t.criadoEm - a.t.criadoEm : a.d - b.d), [trocas, filtro, termo, onde, u.id]);
@@ -37,14 +37,13 @@ export function Trocas() {
     <>
       <Voltar para="/perfil" />
       <h1>{NOME_TROCAS}</h1>
-      <p className="lead">O que ia para o lixo pode servir para alguém aqui perto. Troque por celus ou doe.</p>
+      <p className="lead">O que você não usa mais vale celus para alguém aqui perto. E o que você procura pode estar na casa ao lado.</p>
       <div className="busca" style={{ boxShadow: 'none' }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
         <input id="tr-busca" type="search" placeholder="Muda, geladeira, cama, brinquedo" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar item" />
       </div>
       <div className="seg" style={{ marginTop: 12 }}>
         <button aria-pressed={filtro === 'tudo'} onClick={() => setFiltro('tudo')}>Perto de mim</button>
-        <button aria-pressed={filtro === 'doacao'} onClick={() => setFiltro('doacao')}>Doações</button>
         <button aria-pressed={filtro === 'minhas'} onClick={() => setFiltro('minhas')}>Minhas</button>
       </div>
       <div className="grid2" style={{ marginTop: 14 }}>
@@ -68,7 +67,7 @@ const ROTULO: Record<Troca['status'], string> = { disponivel: 'Disponível', res
 export function NovaTroca() {
   const nav = useNavigate();
   const onde = useLocalizacao() ?? centroPiloto();
-  const [f, setF] = useState({ titulo: '', descricao: '', bairro: '', estado: 'usado' as 'novo' | 'usado', preco: '0', fotos: [] as string[] });
+  const [f, setF] = useState({ titulo: '', descricao: '', bairro: '', estado: 'usado' as 'novo' | 'usado', preco: '', fotos: [] as string[] });
   const [erro, setErro] = useState('');
   return (
     <>
@@ -86,12 +85,12 @@ export function NovaTroca() {
           <label className="campo">Estado<select value={f.estado} onChange={(e) => setF({ ...f, estado: e.target.value as 'novo' | 'usado' })}><option value="usado">Usado</option><option value="novo">Novo</option></select></label>
           <label className="campo">Bairro<input id="nt-bairro" value={f.bairro} onChange={(e) => setF({ ...f, bairro: e.target.value })} placeholder="Enseada" /></label>
         </div>
-        <label className="campo">Valor em celus (0 é doação)<input id="nt-preco" inputMode="numeric" value={f.preco} onChange={(e) => setF({ ...f, preco: e.target.value.replace(/\D/g, '') })} /></label>
-        <p className="hint">Referência: 1 celus = R$ 1. O item fica no ponto onde você está agora; o endereço exato só se combina depois que alguém reservar.</p>
+        <label className="campo">Valor em celus (a partir de {FEIRA_MIN})<input id="nt-preco" inputMode="numeric" placeholder={`Ex.: 30`} value={f.preco} onChange={(e) => setF({ ...f, preco: e.target.value.replace(/\D/g, '') })} /></label>
+        <p className="hint">Referência: 1 celus = R$ 1. Anunciar rende 5 celus (até 3 itens por dia). O item fica no ponto onde você está agora; o endereço exato só se combina depois que alguém reservar.</p>
         {erro && <p className="erro">{erro}</p>}
         <button className="btn" onClick={() => {
           const r = anunciarTroca({ ...f, preco: Number(f.preco || 0), lat: onde.lat, lng: onde.lng });
-          if (r.ok) { toast('Item publicado'); nav('/trocas'); } else setErro(r.erro);
+          if (r.ok) { toast(r.ganho ? `Item publicado. +${r.ganho} celus` : 'Item publicado'); nav('/trocas'); } else setErro(r.erro);
         }}>Publicar</button>
       </div>
     </>
@@ -122,7 +121,7 @@ export function TrocaPage() {
       {t.status === 'disponivel' && !meu && (
         <>
           <button className="btn" style={{ marginTop: 14 }} disabled={saldo < t.preco} onClick={() => { const r = quererTroca(t.id); toast(r.ok ? 'Reservado para você' : r.erro); }}>
-            {t.preco ? `Quero por ${t.preco} celus` : 'Quero (doação)'}
+            Quero por {t.preco} celus
           </button>
           {saldo < t.preco && <p className="hint">Você tem {saldo} celus disponíveis.</p>}
           <button className="back" style={{ marginTop: 10 }} onClick={() => { denunciarTroca(t.id); toast('Obrigado. Vamos olhar este item'); }}>Denunciar item</button>
@@ -132,7 +131,7 @@ export function TrocaPage() {
       {t.status === 'reservado' && peguei && (
         <div className="box" style={{ marginTop: 16 }}>
           <b>Reservado para você</b>
-          <p className="hint" style={{ margin: '6px 0 10px' }}>Na retirada, mostre este código para quem entrega. {t.preco ? `Seus ${t.preco} celus ficam guardados até lá.` : ''}</p>
+          <p className="hint" style={{ margin: '6px 0 10px' }}>Na retirada, mostre este código para quem entrega. Seus {t.preco} celus ficam guardados até lá.</p>
           <div className="code num" style={{ fontSize: 28, textAlign: 'center' }}>{t.codigo}</div>
           {demo && <button className="btn sm ghost" style={{ marginTop: 12 }} onClick={() => { const r = confirmarRetirada(t.id, t.codigo!, true); toast(r.ok ? 'Retirada confirmada' : r.erro); }}>Simular retirada (teste)</button>}
           <button className="back" style={{ marginTop: 10 }} onClick={() => { desistirTroca(t.id); toast('Reserva desfeita'); }}>Desistir</button>

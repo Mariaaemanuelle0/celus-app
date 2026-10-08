@@ -98,8 +98,8 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 ## Celus (moeda)
 - Pontos: não se compra com dinheiro e não se saca. Referência de valor: **1 celus = R$ 1** (parâmetro mostrado na carteira, não é conversão).
 - Passam de uma pessoa para outra só em dois casos, sempre guardados (reservados) antes: caução de encontro (vai para quem organiza se a pessoa faltar) e troca no Feira do Polvo (vai para quem entrega, depois do código conferido).
-- Boas-vindas: 100 celus ao criar a conta.
-- Ganha: ser bem avaliado (+20 com 5 estrelas, +10 com 4), avaliar (+10), 1 a cada R$ 10 em reservas, story (+5, até 3/dia), curtida (+1, até 20/dia), semáforo (+2, até 5/dia).
+- Ganha (lançamento): criar a conta +100 (uma vez); perfil completo com selfie, identidade verificada e bio +50 (uma vez); anunciar item na Feira do Polvo +5 (até 3/dia); marcar a sensação de segurança no mapa +2 (até 5/dia); usar espaços e serviços +1 a cada R$ 10; ir a um evento com ingresso conferido +10 (até 3/dia); ir a encontro de comunidade +5 (até 3/dia); organizar evento ou encontro +2 por pessoa presente (até 50/dia); avaliar um lugar +10 (até 5/dia); ser avaliado com 5 estrelas +20, com 4 +10; manter nota 4,5 ou mais com 3 avaliações ou mais +30 por mês; story +5 (até 3/dia); curtida recebida +1 (até 20/dia, uma por pessoa e post no dia).
+- Organizador só ganha por gente que realmente foi (código conferido), nunca por criar o evento: evita evento falso para gerar celus.
 - Usa: brindes e descontos oferecidos pelos próprios locais, eventos Celus (ex.: ingresso 100 celus, bola na praia 20 celus/hora), campanhas, e para anfitriões: destaque pago, campanha do mês, comissão 2 pontos menor por 30 dias (máx. 1x/mês).
 - Parceiros externos (games etc.) só depois de validação jurídica, e oferecendo benefícios, não aceitando celus como pagamento.
 
@@ -164,8 +164,8 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Encontro passado encerra sozinho: quem confirmou e não teve o código conferido conta como falta.
 
 ## Feira do Polvo (trocas, decidido em outubro de 2026)
-- Seção para o que ia para o lixo ou não tem mais uso (mudas, geladeira antiga, cama, brinquedo). Troca por celus ou doação (valor 0).
-- Foto obrigatória, identidade verificada, de 0 a 5.000 celus. Endereço exato só depois da reserva.
+- Seção para o que não tem mais uso (mudas, geladeira antiga, cama, brinquedo). Só troca por celus: **sem doação**, porque o que é de graça perde valor e foge do ecossistema. Valor mínimo 5 celus.
+- Foto obrigatória, identidade verificada, de 5 a 5.000 celus. Endereço exato só depois da reserva.
 - Quem quer reserva os celus; na retirada, quem entrega digita o código de quem recebe e só então os celus passam.
 - Nome escolhido pela fundadora. "Fenda do Biquíni" descartado por ser marca registrada de terceiros. Antes de lançar, consultar o INPI para "Feira do Polvo".
 

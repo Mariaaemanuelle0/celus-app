@@ -132,17 +132,27 @@ export function slotDe(t = new Date()): string {
   return h < 6 ? 'madrugada' : h < 12 ? 'manha' : h < 18 ? 'tarde' : 'noite';
 }
 
-/** Ganhos de celus (com limite diário onde há). */
-export const GANHOS = [
-  { chave: 'boasvindas', txt: 'Boas-vindas ao criar a conta', v: 100, limite: 1 },
+/** Ganhos de celus. limite = por dia; unico = uma vez por conta; mensal = uma vez por mês. */
+export type Ganho = { chave: string; txt: string; v: number; limite?: number; unico?: boolean; mensal?: boolean };
+export const GANHOS: Ganho[] = [
+  { chave: 'boasvindas', txt: 'Criar a conta', v: 100, unico: true },
+  { chave: 'perfil', txt: 'Completar o perfil (selfie, identidade verificada e bio)', v: 50, unico: true },
+  { chave: 'feira', txt: 'Anunciar um item na Feira do Polvo', v: 5, limite: 3 },
+  { chave: 'semaforo', txt: 'Marcar a sensação de segurança no mapa', v: 2, limite: 5 },
+  { chave: 'reserva', txt: 'Usar espaços e serviços, a cada R$ 10', v: 1 },
+  { chave: 'evento', txt: 'Ir a um evento (ingresso conferido na entrada)', v: 10, limite: 3 },
+  { chave: 'encontro', txt: 'Ir a um encontro de comunidade', v: 5, limite: 3 },
+  { chave: 'organizar', txt: 'Criar eventos e encontros, por pessoa presente', v: 2, limite: 50 },
+  { chave: 'avaliar', txt: 'Avaliar um lugar depois de usar', v: 10, limite: 5 },
   { chave: 'aval5', txt: 'Ser avaliado com 5 estrelas', v: 20 },
   { chave: 'aval4', txt: 'Ser avaliado com 4 estrelas', v: 10 },
-  { chave: 'avaliar', txt: 'Avaliar depois de usar um espaço', v: 10 },
-  { chave: 'reserva', txt: 'A cada R$ 10 em reservas', v: 1 },
+  { chave: 'boanota', txt: 'Manter nota 4,5 ou mais (com 3 avaliações ou mais)', v: 30, mensal: true },
   { chave: 'story', txt: 'Postar story no local', v: 5, limite: 3 },
   { chave: 'curtida', txt: 'Receber curtida no story', v: 1, limite: 20 },
-  { chave: 'semaforo', txt: 'Marcar o semáforo de segurança', v: 2, limite: 5 },
 ];
+/** Na Feira do Polvo nada sai de graça: o menor valor é 5 celus. */
+export const FEIRA_MIN = 5;
+export const FEIRA_MAX = 5000;
 
 /** Pagamento só pelo app, antecipado, por cartão ou Pix. Nunca em dinheiro, maquininha ou Pix direto ao anfitrião. */
 const POR_FORA = /(em dinheiro|dinheiro vivo|aceito dinheiro|maquininha|maquina de cart|m[aá]quina de cart|pague? (no|na hora|no local|na entrada)|pagamento (no|na) (local|hora|entrada)|por fora|chave pix|meu pix|pix direto)/i;

@@ -1,6 +1,7 @@
 import type { Anuncio, Encontro, Extra, Ingresso, Pacote, Reserva } from '../data/types';
 import { distanciaKm, type Ponto } from '../lib/geo';
 import {
+  FEIRA_MAX, FEIRA_MIN,
   CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, MAX_INGRESSOS_COMPRA, TAXA_INGRESSO, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
   bloqueadoPorConferencia, celulaSemaforo, pedePagamentoPorFora, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
@@ -22,7 +23,7 @@ async function hash(txt: string): Promise<string> {
 }
 
 type Resultado = { ok: true } | { ok: false; erro: string };
-const falha = (erro: string): Resultado => ({ ok: false, erro });
+const falha = (erro: string): { ok: false; erro: string } => ({ ok: false, erro });
 const sessao = () => ler().sessao;
 
 /* ---------- Conta ---------- */
@@ -57,7 +58,13 @@ export const sair = () => mudar((d) => { d.sessao = null; });
 /** Modo demonstração: o documento é "analisado" na hora. No app real, vai para um serviço de verificação. */
 export function enviarDocumento(selfie?: string) {
   const id = sessao(); if (!id) return;
-  mudar((d) => { d.usuarios[id].verificacao = 'verificado'; if (selfie) d.usuarios[id].foto = selfie; });
+  mudar((d) => { d.usuarios[id].verificacao = 'verificado'; if (selfie) d.usuarios[id].foto = selfie; bonusPerfil(d, id); });
+}
+
+/** Perfil completo (selfie, identidade verificada e bio) rende um bônus único. */
+function bonusPerfil(d: DB, id: string): number {
+  const u = d.usuarios[id];
+  return u?.foto && u.verificacao === 'verificado' && u.bio && u.bio.length >= 10 ? ganhar(d, id, 'perfil', 'Perfil completo') : 0;
 }
 
 /** Foto de perfil é sempre o rosto da pessoa: sem ela não dá para reservar, chamar profissional ou anunciar. */
@@ -353,7 +360,14 @@ export function curtir(postId: string) {
   const uid = sessao(); if (!uid) return;
   mudar((d) => {
     const i = d.curtidas.findIndex((c) => c.userId === uid && c.postId === postId);
-    if (i >= 0) d.curtidas.splice(i, 1); else d.curtidas.push({ userId: uid, postId });
+    if (i >= 0) { d.curtidas.splice(i, 1); return; }
+    d.curtidas.push({ userId: uid, postId });
+    // Quem postou ganha 1 celus por curtida (uma vez por pessoa e post no dia; teto diário na regra).
+    const s = d.stories.find((x) => x.id === postId); if (!s || s.autorId === uid) return;
+    const c = carteiraDe(d, s.autorId), marca = `curtiu:${uid}:${postId}`;
+    if (c.hoje.contagem[marca]) return;
+    ganhar(d, s.autorId, 'curtida', `Curtida no seu story`);
+    const c2 = carteiraDe(d, s.autorId); c2.hoje.contagem[marca] = 1; d.carteiras[s.autorId] = c2;
   });
 }
 
@@ -496,9 +510,11 @@ export function storiesVisiveis(stories: import('../data/types').Story[], denunc
 }
 
 /* ---------- Perfil e notificações ---------- */
-export function atualizarPerfil(dados: { foto?: string; bio: string }) {
-  const id = sessao(); if (!id) return;
-  mudar((d) => { const u = d.usuarios[id]; if (dados.foto !== undefined) u.foto = dados.foto || undefined; u.bio = dados.bio.trim().slice(0, 160) || undefined; });
+export function atualizarPerfil(dados: { foto?: string; bio: string }): number {
+  const id = sessao(); if (!id) return 0;
+  let ganho = 0;
+  mudar((d) => { const u = d.usuarios[id]; if (dados.foto !== undefined) u.foto = dados.foto || undefined; u.bio = dados.bio.trim().slice(0, 160) || undefined; ganho = bonusPerfil(d, id); });
+  return ganho;
 }
 
 export const marcarLidas = () => { const id = sessao(); if (id) mudar((d) => { d.notificacoes.forEach((n) => { if (n.userId === id) n.lida = true; }); }); };
@@ -587,7 +603,11 @@ export function validarIngresso(anuncioId: string, digitado: string): { ok: true
   if (!r) return { ok: false, erro: 'Ingresso não encontrado para este evento.' };
   const ing = r.ingressos!.find((i) => i.codigo === cod)!;
   if (ing.usadoEm) return { ok: false, erro: `Ingresso já usado às ${new Date(ing.usadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.` };
-  mudar((d) => { const x = d.reservas.find((y) => y.id === r.id)!; x.ingressos!.find((i) => i.codigo === cod)!.usadoEm = Date.now(); });
+  mudar((d) => {
+    const x = d.reservas.find((y) => y.id === r.id)!; x.ingressos!.find((i) => i.codigo === cod)!.usadoEm = Date.now();
+    ganhar(d, x.userId, 'evento', `Presença em ${a.titulo}`);
+    ganhar(d, a.donoId, 'organizar', `Público em ${a.titulo}`);
+  });
   return { ok: true, nome: d0.usuarios[r.userId]?.nome ?? 'Cliente', meia: ing.meia, lote: ing.loteNome };
 }
 
@@ -836,6 +856,8 @@ export function marcarPresenca(id: string, digitado: string, demo = false): { ok
   mudar((d) => {
     const x = d.encontros.find((y) => y.id === id)!; const q = x.presencas.find((y) => y.codigo === p.codigo)!;
     q.status = 'presente'; devolverCelus(d, q.userId, x.caucao, x.titulo);
+    ganhar(d, q.userId, 'encontro', `Presença em ${x.titulo}`);
+    if (!x.organizadorId.startsWith('demo-')) ganhar(d, x.organizadorId, 'organizar', `Presença em ${x.titulo}`);
     notificar(d, q.userId, x.caucao ? `Presença confirmada em "${x.titulo}". Seus ${x.caucao} celus voltaram.` : `Presença confirmada em "${x.titulo}".`, `/comunidade/${x.comunidadeId}`);
   });
   return { ok: true, nome: d0.usuarios[p.userId]?.nome ?? 'Participante' };
@@ -861,17 +883,18 @@ export function encerrarEncontrosPassados() {
 /* ---------- Trocas ---------- */
 const PROIBIDOS = /(arma|muni[cç][aã]o|rem[eé]dio|medicamento|tarja|cigarro|vape|bebida alco|cerveja|vinho|animal|filhote|cachorro|gato|p[aá]ssaro|documento|chip|celular bloqueado)/i;
 
-export function anunciarTroca(dados: { titulo: string; descricao: string; estado: 'novo' | 'usado'; preco: number; fotos: string[]; bairro: string; lat: number; lng: number }): Resultado {
+export function anunciarTroca(dados: { titulo: string; descricao: string; estado: 'novo' | 'usado'; preco: number; fotos: string[]; bairro: string; lat: number; lng: number }): { ok: true; ganho: number } | { ok: false; erro: string } {
   const e = precisaVerificado(); if (e) return falha(e);
   if (dados.titulo.trim().length < 3) return falha('Diga o que é o item.');
   if (!dados.fotos.length) return falha('Coloque pelo menos uma foto do item.');
-  if (dados.preco < 0 || dados.preco > 5000) return falha('O valor vai de 0 (doação) a 5.000 celus.');
   const texto = `${dados.titulo} ${dados.descricao}`;
   if (PROIBIDOS.test(texto)) return falha('Esse tipo de item não pode ser trocado na Celus (armas, remédios, bebidas, cigarros, animais, documentos).');
   if (moderar(texto) || pedePagamentoPorFora(texto)) return falha('Tire do texto contato, link ou pedido de pagamento fora do app.');
+  if (!Number.isInteger(dados.preco) || dados.preco < FEIRA_MIN || dados.preco > FEIRA_MAX) return falha(`O valor vai de ${FEIRA_MIN} a ${FEIRA_MAX.toLocaleString('pt-BR')} celus. Na Feira do Polvo tudo tem valor.`);
   const uid = sessao()!;
-  mudar((d) => { d.trocas.unshift({ id: novoId(), donoId: uid, ...dados, titulo: dados.titulo.trim(), descricao: dados.descricao.trim(), criadoEm: Date.now(), status: 'disponivel' }); });
-  return { ok: true };
+  let ganho = 0;
+  mudar((d) => { d.trocas.unshift({ id: novoId(), donoId: uid, ...dados, titulo: dados.titulo.trim(), descricao: dados.descricao.trim(), criadoEm: Date.now(), status: 'disponivel' }); ganho = ganhar(d, uid, 'feira', `Item na Feira: ${dados.titulo.trim()}`); });
+  return { ok: true, ganho };
 }
 
 /** "Quero": os celus ficam reservados até a retirada. */
@@ -911,7 +934,7 @@ export function confirmarRetirada(id: string, digitado: string, demo = false): R
     pagarReservado(d, x.compradorId!, x.donoId, x.preco, `troca de "${x.titulo}"`);
     x.status = 'entregue'; x.entregueEm = Date.now();
     notificar(d, x.compradorId, `Retirada de "${x.titulo}" confirmada. Bom proveito!`, `/troca/${x.id}`);
-    notificar(d, x.donoId, x.preco ? `Você recebeu ${x.preco} celus por "${x.titulo}".` : `Doação de "${x.titulo}" concluída. Obrigado por dar outra vida ao item.`, `/troca/${x.id}`);
+    notificar(d, x.donoId, `Você recebeu ${x.preco} celus por "${x.titulo}".`, `/troca/${x.id}`);
   });
   return { ok: true };
 }
@@ -921,3 +944,21 @@ export const denunciarTroca = (id: string) => mudar((d) => { const x = d.trocas.
 
 /* ---------- Privacidade do perfil ---------- */
 export const alternarPrivacidade = (bloco: 'comunidades' | 'eventos' | 'lugares') => { const id = sessao(); if (id) mudar((d) => { const u = d.usuarios[id]; const p = u.privacidade ?? { comunidades: true, eventos: true, lugares: false }; u.privacidade = { ...p, [bloco]: !p[bloco] }; }); };
+
+/* ---------- Bônus do mês por boa nota ---------- */
+/** Uma vez por mês: quem tem nota média 4,5 ou mais (com 3 avaliações ou mais), como hóspede ou como anfitrião, ganha o bônus. */
+export function bonusBoaNota() {
+  const uid = sessao(); if (!uid) return;
+  const mes = new Date().toISOString().slice(0, 7);
+  const d0 = ler(); const u = d0.usuarios[uid];
+  if (!u || u.bonusNotaMes === mes) return;
+  const recebidas = d0.avaliacoes.filter((a) => a.alvo === 'usuario' && a.alvoId === uid && a.nota);
+  const comoHospede = recebidas.length >= 3 && recebidas.reduce((s, a) => s + a.nota!, 0) / recebidas.length >= 4.5;
+  const comoAnfitriao = d0.anuncios.some((a) => a.donoId === uid && a.status === 'aprovado' && a.totalAvaliacoes >= 3 && (a.notaQualidade + a.notaCustoBeneficio) / 2 >= 4.5);
+  if (!comoHospede && !comoAnfitriao) return;
+  mudar((d) => {
+    d.usuarios[uid].bonusNotaMes = mes;
+    const v = ganhar(d, uid, 'boanota', 'Bônus do mês: nota 4,5 ou mais');
+    if (v) notificar(d, uid, `Sua nota está ótima. Você ganhou ${v} celus de bônus do mês.`, '/celus');
+  });
+}

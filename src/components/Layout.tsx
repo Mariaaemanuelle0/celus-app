@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react';
-import { avisosDeEventos, concluirEventosPassados, encerrarEncontrosPassados } from '../store/acoes';
+import { avisosDeEventos, bonusBoaNota, concluirEventosPassados, encerrarEncontrosPassados } from '../store/acoes';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDB, useUsuario } from '../store/db';
 import { cobranca } from '../lib/regras';
@@ -57,7 +57,7 @@ function Sino() {
 
 export function Layout() {
   const u = useUsuario();
-  useEffect(() => { concluirEventosPassados(); avisosDeEventos(); encerrarEncontrosPassados(); }, []);
+  useEffect(() => { concluirEventosPassados(); avisosDeEventos(); encerrarEncontrosPassados(); bonusBoaNota(); }, []);
   const loc = useLocation();
   // Cada tela nova começa do topo.
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
