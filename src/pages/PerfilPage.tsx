@@ -10,6 +10,7 @@ import { alternarAlbum, alternarEquipe, alternarPrivacidade, atualizarPerfil, ex
 import { apagarTudo, carteiraDe, useDB, useUsuario } from '../store/db';
 import { CELUS_EM_REAIS, GANHOS } from '../lib/regras';
 import { NOME_TROCAS, useBlocosPerfil } from '../lib/perfil';
+import { CartaoSaude } from './Saude';
 
 const STATUS: Record<string, string> = { confirmada: 'Confirmada', em_uso: 'Em uso', concluida: 'Concluída', cancelada: 'Cancelada', solicitado: 'Chamado enviado', aceito: 'Aceito', a_caminho: 'A caminho' };
 const data = (t: number) => new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
@@ -69,6 +70,8 @@ export function PerfilPage() {
           <b>{NOME_TROCAS}</b><span className="hint">Troque o que não usa por celus</span>
         </Link>
       </div>
+
+      <CartaoSaude />
 
       <h2>No seu perfil</h2>
       <p className="hint" style={{ margin: '-6px 0 10px' }}>Sem seguidores. Quem abre seu perfil vê só o que você deixar visível. <Link to={`/pessoa/${u.id}`}>Ver como os outros veem</Link></p>

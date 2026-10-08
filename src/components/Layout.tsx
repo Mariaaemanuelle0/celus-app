@@ -5,6 +5,15 @@ import { useDB, useUsuario } from '../store/db';
 import { cobranca } from '../lib/regras';
 import { Toasts, useAgora } from './ui';
 
+/** Link aberto sem estar logado (ex.: QR da academia): volta para ele depois de entrar. */
+function guardarVolta(caminho: string) {
+  if (!caminho.startsWith('/saude/checkin')) return; // só links que a pessoa abre de fora (QR da recepção)
+  try { sessionStorage.setItem('celus-volta', caminho); } catch { /* sem armazenamento */ }
+}
+export function destinoDepoisDeEntrar(): string {
+  try { const v = sessionStorage.getItem('celus-volta'); sessionStorage.removeItem('celus-volta'); return v && v.startsWith('/') && !v.startsWith('//') ? v : '/'; } catch { return '/'; }
+}
+
 /** Símbolo da Celus: o polvo original da marca, sem fundo. */
 export function Marca() {
   return <img className="marca" src="/polvo.png" alt="" aria-hidden="true" />;
@@ -19,7 +28,7 @@ const PROCURAR = [
   { to: '/perfil', nome: 'Perfil', d: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></> },
 ];
 /** Telas que se abrem a partir do Perfil: a aba Perfil continua acesa. */
-const DENTRO_DO_PERFIL = /^\/(comunidade|trocas|troca|pessoa|celus)(\/|$)/;
+const DENTRO_DO_PERFIL = /^\/(comunidade|trocas|troca|pessoa|celus|saude)(\/|$)/;
 
 const RENDA = [
   { to: '/renda', nome: 'Painel', d: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
@@ -62,7 +71,7 @@ export function Layout() {
   // Cada tela nova começa do topo.
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
   const nav = useNavigate();
-  if (!u) return <Navigate to="/entrar" replace />;
+  if (!u) { guardarVolta(loc.pathname + loc.search); return <Navigate to="/entrar" replace />; }
   const renda = loc.pathname.startsWith('/renda');
   const abas = renda ? RENDA : PROCURAR;
   const mostrarEmUso = !renda && !loc.pathname.startsWith('/uso') && loc.pathname !== '/chat';

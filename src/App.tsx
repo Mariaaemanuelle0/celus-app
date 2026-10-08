@@ -31,6 +31,9 @@ const Trocas = sob(() => import('./pages/Trocas'), 'Trocas');
 const NovaTroca = sob(() => import('./pages/Trocas'), 'NovaTroca');
 const TrocaPage = sob(() => import('./pages/Trocas'), 'TrocaPage');
 const Pessoa = sob(() => import('./pages/Pessoa'), 'Pessoa');
+const SaudePage = sob(() => import('./pages/Saude'), 'SaudePage');
+const CheckinTreino = sob(() => import('./pages/Saude'), 'CheckinTreino');
+const PainelSaude = sob(() => import('./pages/Saude'), 'PainelSaude');
 import { useUsuario } from './store/db';
 
 function SoDeslogado({ children }: { children: React.ReactNode }) {
@@ -58,6 +61,9 @@ export default function App() {
           <Route path="trocas/nova" element={<NovaTroca />} />
           <Route path="troca/:id" element={<TrocaPage />} />
           <Route path="pessoa/:id" element={<Pessoa />} />
+          <Route path="saude" element={<SaudePage />} />
+          <Route path="saude/checkin" element={<CheckinTreino />} />
+          <Route path="renda/saude" element={<PainelSaude />} />
           <Route path="perfil" element={<PerfilPage />} />
           <Route path="perfil/editar" element={<EditarPerfil />} />
           <Route path="perfil/excluir" element={<ExcluirConta />} />

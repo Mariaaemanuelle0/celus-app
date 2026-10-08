@@ -2,9 +2,9 @@
 // Quando o Supabase for ligado, estas ações passam a chamar o servidor; as telas não mudam.
 import { useSyncExternalStore } from 'react';
 import type {
-  Anuncio, Avaliacao, Beneficio, Carteira, Comunidade, Denuncia, Encontro, Troca, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
+  Anuncio, Avaliacao, Beneficio, Carteira, CheckinSaude, Comunidade, Denuncia, LocalSaude, Encontro, Troca, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
 } from '../data/types';
-import { anunciosFicticios, sementesComunidade } from '../data/seed';
+import { anunciosFicticios, sementesComunidade, sementesSaude } from '../data/seed';
 import { centroPiloto } from '../lib/geo';
 import { GANHOS } from '../lib/regras';
 
@@ -30,6 +30,8 @@ export type DB = {
   comunidades: Comunidade[];
   encontros: Encontro[];
   trocas: Troca[];
+  locaisSaude: LocalSaude[];
+  checkinsSaude: CheckinSaude[];
 };
 
 const CHAVE = 'celus-db-v1';
@@ -50,7 +52,7 @@ function inicial(): DB {
       st('s6', 'Nina P.', 15, 'Pão de queijo e Wi-Fi bom. Rendeu a tarde.'),
       st('s3', 'Carol M.', 140, 'Cochilo depois do almoço.'),
     ],
-    checkins: [], curtidas: [], chat: [], semaforo: [], carteiras: {},
+    checkins: [], curtidas: [], chat: [], semaforo: [], carteiras: {}, locaisSaude: sementesSaude(), checkinsSaude: [],
     beneficios: [
       { id: 'b-ext30', grupo: 'celus', nome: '30 minutos extras grátis', desc: 'Em qualquer reserva por hora.', custo: 150 },
       { id: 'b-camp', grupo: 'celus', nome: 'Campanha Celus do mês', desc: 'Cupons e sorteios da campanha em andamento.', custo: 80 },
@@ -80,6 +82,8 @@ function carregar(): DB {
         db.interesses ??= [];
         db.suporte ??= [];
         if (!db.comunidades) Object.assign(db, sementesComunidade());
+        db.locaisSaude ??= sementesSaude();
+        db.checkinsSaude ??= [];
         db.trocas?.forEach((t) => { if (t.preco < 5 && t.status === 'disponivel') t.preco = t.id === 't2' ? 30 : 5; });
         for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
         return db;

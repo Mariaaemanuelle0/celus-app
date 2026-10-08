@@ -98,7 +98,7 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 ## Celus (moeda)
 - Pontos: não se compra com dinheiro e não se saca. Referência de valor: **1 celus = R$ 1** (parâmetro mostrado na carteira, não é conversão).
 - Passam de uma pessoa para outra só em dois casos, sempre guardados (reservados) antes: caução de encontro (vai para quem organiza se a pessoa faltar) e troca no Feira do Polvo (vai para quem entrega, depois do código conferido).
-- Ganha (lançamento): criar a conta +100 (uma vez); perfil completo com selfie, identidade verificada e bio +50 (uma vez); anunciar item na Feira do Polvo +5 (até 3/dia); marcar a sensação de segurança no mapa +2 (até 5/dia); usar espaços e serviços +1 a cada R$ 10; ir a um evento com ingresso conferido +10 (até 3/dia); ir a encontro de comunidade +5 (até 3/dia); organizar evento ou encontro +2 por pessoa presente (até 50/dia); avaliar um lugar +10 (até 5/dia); ser avaliado com 5 estrelas +20, com 4 +10; manter nota 4,5 ou mais com 3 avaliações ou mais +30 por mês; story +5 (até 3/dia); curtida recebida +1 (até 20/dia, uma por pessoa e post no dia).
+- Ganha (lançamento): criar a conta +100 (uma vez); perfil completo com selfie, identidade verificada e bio +50 (uma vez); anunciar item na Feira do Polvo +5 (até 3/dia); marcar a sensação de segurança no mapa +2 (até 5/dia); usar espaços e serviços +1 a cada R$ 10; treinar num parceiro de saúde +5 (1/dia), 3 treinos na semana +15, 12 no mês +40; ir a um evento com ingresso conferido +10 (até 3/dia); ir a encontro de comunidade +5 (até 3/dia); organizar evento ou encontro +2 por pessoa presente (até 50/dia); avaliar um lugar +10 (até 5/dia); ser avaliado com 5 estrelas +20, com 4 +10; manter nota 4,5 ou mais com 3 avaliações ou mais +30 por mês; story +5 (até 3/dia); curtida recebida +1 (até 20/dia, uma por pessoa e post no dia).
 - Organizador só ganha por gente que realmente foi (código conferido), nunca por criar o evento: evita evento falso para gerar celus.
 - Usa: brindes e descontos oferecidos pelos próprios locais, eventos Celus (ex.: ingresso 100 celus, bola na praia 20 celus/hora), campanhas, e para anfitriões: destaque pago, campanha do mês, comissão 2 pontos menor por 30 dias (máx. 1x/mês).
 - Parceiros externos (games etc.) só depois de validação jurídica, e oferecendo benefícios, não aceitando celus como pagamento.
@@ -155,7 +155,8 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Imóveis: sem comissão sobre venda; corretagem com o sócio que tem CRECI.
 - Ingressos: regras de meia-entrada e cota obrigatória (lei federal), direito de arrependimento em compra online, responsabilidade do organizador por alvarás, segurança, capacidade e proibição de menores; taxa de serviço destacada no preço.
 - Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
-- LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão).
+- LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão). Frequência em parceiros de saúde: tratar com cuidado (pode revelar rotina e, junto com o tipo de local, informação de saúde); nunca pública, nunca compartilhada com o parceiro além da contagem.
+- Parceiros de saúde: termo de parceria (QR na recepção, proibido check-in sem treino real, a Celus pode pausar o local em caso de fraude).
 
 ## Comunidades (decidido em outubro de 2026)
 - Grupos de interesse ligados a um lugar, como as comunidades do Orkut (ex.: "Corrida na Enseada"). Quem entra sabe o que o grupo faz e onde.
@@ -171,6 +172,14 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 
 ## Perfil sem seguidores
 - Mostra comunidades, eventos (ingressos e encontros com presença) e lugares usados. Cada bloco visível ou oculto pela própria pessoa.
+
+## Saúde (decidido em outubro de 2026)
+- Academias, estúdios, boxes e afins viram **parceiros de saúde** (cadastro em Rentabilizar, aprovado pela curadoria, que confere se o local existe).
+- Na recepção fica uma tela com QR que **muda a cada 30 segundos** e um código de 6 dígitos. A pessoa aponta a câmera do celular; o check-in só vale com a localização a até 200 m do local. Foto do QR não funciona.
+- Ganhos: treino +5 (um por dia, em qualquer parceiro); 3 dias de treino na semana +15; 12 dias no mês +40. Dono do local não faz check-in no próprio local.
+- Frequência de treino é privada: não aparece no perfil público.
+- No lançamento, a Celus banca esses celus como marketing. Depois, o modelo é o parceiro comprar pacotes de celus para dar aos alunos (modelo de coalizão, ver "Ideias para depois").
+- No app de demonstração o código do QR é gerado no próprio aparelho. Com o servidor (Supabase), o código passa a ser gerado e conferido no servidor.
 
 ## Ideias em discussão
 - **Currículo de freelancer:** histórico de trabalhos e estrelas visível só para quem está contratando; locais também ganham nota de "bom para trabalhar como freelancer". Próxima etapa.

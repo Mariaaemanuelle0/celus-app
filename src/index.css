@@ -514,3 +514,17 @@ button.kpi[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset
 .feira-cor { color: var(--ok); background: rgba(61,214,140,.1); border-color: rgba(61,214,140,.28); }
 .sumline.priv span { font-family: var(--body, inherit); }
 a.chip { text-decoration: none; }
+
+/* ---------- Saúde ---------- */
+.saude-card { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; padding: 14px 16px; color: var(--text); text-decoration: none; border-color: rgba(255,138,92,.3); }
+.saude-cor { color: #FF8A5C; background: rgba(255,138,92,.1); border-color: rgba(255,138,92,.3); margin-bottom: 0; flex: none; }
+.prog { display: flex; flex-direction: column; gap: 6px; }
+.prog + .prog { margin-top: 12px; }
+.prog-barra { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.prog-barra span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FF8A5C, #FFC35C); transition: width .4s; }
+.treino-ok { padding: 16px; border-color: rgba(61,214,140,.4); background: rgba(61,214,140,.06); }
+.qr-tela { margin-top: 16px; padding: 20px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line-2); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.qr { width: min(280px, 78vw); aspect-ratio: 1; background: #fff; border-radius: 16px; padding: 10px; }
+.qr svg { width: 100%; height: 100%; display: block; }
+.qr-cod { font-size: 30px; letter-spacing: .12em; }
+.parceiro { padding: 14px; display: flex; flex-direction: column; gap: 10px; }

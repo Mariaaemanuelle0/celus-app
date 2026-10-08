@@ -133,13 +133,16 @@ export function slotDe(t = new Date()): string {
 }
 
 /** Ganhos de celus. limite = por dia; unico = uma vez por conta; mensal = uma vez por mês. */
-export type Ganho = { chave: string; txt: string; v: number; limite?: number; unico?: boolean; mensal?: boolean };
+export type Ganho = { chave: string; txt: string; v: number; limite?: number; unico?: boolean; mensal?: boolean; semanal?: boolean };
 export const GANHOS: Ganho[] = [
   { chave: 'boasvindas', txt: 'Criar a conta', v: 100, unico: true },
   { chave: 'perfil', txt: 'Completar o perfil (selfie, identidade verificada e bio)', v: 50, unico: true },
   { chave: 'feira', txt: 'Anunciar um item na Feira do Polvo', v: 5, limite: 3 },
   { chave: 'semaforo', txt: 'Marcar a sensação de segurança no mapa', v: 2, limite: 5 },
   { chave: 'reserva', txt: 'Usar espaços e serviços, a cada R$ 10', v: 1 },
+  { chave: 'treino', txt: 'Treinar num parceiro de saúde (QR da recepção)', v: 5, limite: 1 },
+  { chave: 'semana3', txt: 'Treinar 3 dias na mesma semana', v: 15, semanal: true },
+  { chave: 'mes12', txt: 'Treinar 12 dias no mês', v: 40, mensal: true },
   { chave: 'evento', txt: 'Ir a um evento (ingresso conferido na entrada)', v: 10, limite: 3 },
   { chave: 'encontro', txt: 'Ir a um encontro de comunidade', v: 5, limite: 3 },
   { chave: 'organizar', txt: 'Criar eventos e encontros, por pessoa presente', v: 2, limite: 50 },
@@ -157,3 +160,23 @@ export const FEIRA_MAX = 5000;
 /** Pagamento só pelo app, antecipado, por cartão ou Pix. Nunca em dinheiro, maquininha ou Pix direto ao anfitrião. */
 const POR_FORA = /(em dinheiro|dinheiro vivo|aceito dinheiro|maquininha|maquina de cart|m[aá]quina de cart|pague? (no|na hora|no local|na entrada)|pagamento (no|na) (local|hora|entrada)|por fora|chave pix|meu pix|pix direto)/i;
 export const pedePagamentoPorFora = (txt: string) => POR_FORA.test(txt);
+
+/* ---------- Saúde ---------- */
+export const TIPOS_SAUDE: Record<import('../data/types').TipoSaude, string> = { academia: 'Academia', estudio: 'Estúdio (pilates, yoga, dança)', box: 'Box de treino funcional', piscina: 'Natação', quadra: 'Quadra e esportes', luta: 'Lutas', outro: 'Outro' };
+/** O QR da recepção muda a cada 30 s; aceitamos o código atual e o anterior. */
+export const JANELA_QR_S = 30;
+/** Distância máxima entre a pessoa e o local na hora do check-in. */
+export const RAIO_CHECKIN_M = 200;
+/** Código de 6 dígitos do QR para uma janela de tempo (no app real, gerado e conferido pelo servidor). */
+export function codigoQR(segredo: string, janela: number): string {
+  let h = 2166136261;
+  for (const ch of `${segredo}:${janela}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return String((h >>> 0) % 1_000_000).padStart(6, '0');
+}
+export const janelaAtual = (agora = Date.now()) => Math.floor(agora / (JANELA_QR_S * 1000));
+/** Chave da semana: a data da segunda-feira (AAAA-MM-DD). */
+export function chaveSemana(t = Date.now()): string {
+  const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return diaLocal(d.getTime());
+}
+export const diaLocal = (t: number) => new Date(t).toLocaleDateString('sv-SE');

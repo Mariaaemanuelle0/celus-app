@@ -9,13 +9,14 @@ import { Estrelas, IconeCategoria, Miniatura, Voltar, lerImagem, toast, useAgora
 import { emDestaque } from '../data/useAnuncios';
 import { ComoChegar } from '../components/Rota';
 import { brl, dataEvento, rotuloPreco, virgula } from '../lib/format';
+import { TIPOS_SAUDE } from '../lib/regras';
 import { centroPiloto } from '../lib/geo';
 import {
   COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, TAXA_INGRESSO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
 } from '../lib/regras';
 import {
   alternarDisponivel, arquivarPorFora, resolverSuporte, salvarRecebimento, avisarInteressados, cancelarEvento, numerosEvento, validarIngresso, assumirAnuncio, avaliarHospede, criarAnuncioAssistido, avancarChamado, confirmarChegada, conferirEspaco, destravarCodigo, conferirRevisao, criarAnuncio, criarBeneficio, decidirAnuncio, decidirDenuncia,
-  denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
+  decidirLocalSaude, denunciarStory, editarAnuncio, hhmm, pausarAnuncio, salvarAgenda, storiesAtivos,
 } from '../store/acoes';
 import { useDB, useUsuario } from '../store/db';
 
@@ -67,6 +68,7 @@ export function Painel() {
       </ol>
       <Link className="btn" to="/renda/anunciar">Anunciar agora</Link>
       <TenhoCodigo />
+      <Link className="box linha" style={{ marginTop: 12, color: 'var(--text)', textDecoration: 'none' }} to="/renda/saude"><div className="sp"><b>Tem academia, estúdio ou box?</b><div className="hint">Vire parceiro de saúde: seus alunos ganham celus a cada treino.</div></div><span>›</span></Link>
     </>
   );
 
@@ -163,6 +165,7 @@ export function Painel() {
         </div>
       ))}</div>
       <Link className="btn ghost" style={{ marginTop: 12 }} to="/renda/anunciar">Anunciar outro</Link>
+      <Link className="box linha" style={{ marginTop: 12, color: 'var(--text)', textDecoration: 'none' }} to="/renda/saude"><div className="sp"><b>Tem academia, estúdio ou box?</b><div className="hint">Vire parceiro de saúde: seus alunos ganham celus a cada treino.</div></div><span>›</span></Link>
 
       <CadastrosAssistidos />
 
@@ -702,6 +705,7 @@ export function Curadoria() {
   const stories = useDB((d) => d.stories);
   const reservas = useDB((d) => d.reservas);
   const usuarios = useDB((d) => d.usuarios);
+  const locaisSaude = useDB((d) => d.locaisSaude);
   if (!u.equipeCelus) return (
     <>
       <h1>Curadoria</h1>
@@ -715,6 +719,7 @@ export function Curadoria() {
   const porFora = reservas.filter((r) => r.pagamentoPorFora);
   const suporte = useDB((d) => d.suporte);
   const abertos = suporte.filter((x) => x.status === 'aberto');
+  const saudePend = locaisSaude.filter((l) => l.status === 'pendente');
   return (
     <>
       <h1>Curadoria</h1>
@@ -733,6 +738,14 @@ export function Curadoria() {
           </div>
         );
       })}</div> : <div className="empty">Nenhuma denúncia pendente.</div>}
+      <h2>Parceiros de saúde {saudePend.length ? <span className="coin">{saudePend.length}</span> : null}</h2>
+      {saudePend.length ? <div className="stack">{saudePend.map((l) => (
+        <div key={l.id} className="box" style={{ padding: 14 }}>
+          <b>{l.nome}</b><div className="meta">{TIPOS_SAUDE[l.tipo]}, {l.bairro}. Cadastrado por {usuarios[l.donoId]?.nome ?? 'anfitrião'}</div>
+          <p className="hint">Confira se o local existe e funciona no endereço do mapa antes de aprovar. Local falso vira fábrica de celus.</p>
+          <div className="row"><button className="btn sm" onClick={() => { decidirLocalSaude(l.id, 'aprovado'); toast('Parceiro aprovado'); }}>Aprovar</button><button className="btn sm ghost" onClick={() => { decidirLocalSaude(l.id, 'recusado'); toast('Parceiro recusado'); }}>Recusar</button></div>
+        </div>
+      ))}</div> : <div className="empty">Nenhum parceiro de saúde para aprovar.</div>}
       <h2>Anúncios para aprovar {pend.length ? <span className="coin">{pend.length}</span> : null}</h2>
       {pend.length ? <div className="stack">{pend.map((a) => (
         <div key={a.id} className="box" style={{ overflow: 'hidden' }}>

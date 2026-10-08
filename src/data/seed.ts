@@ -1,6 +1,6 @@
 // Dados FICTÍCIOS para desenvolvimento, usados enquanto o Supabase não está configurado.
 // As posições são deslocamentos em km a partir do centro da cidade piloto.
-import type { Anuncio, Comunidade, Encontro, Troca } from './types';
+import type { Anuncio, Comunidade, Encontro, Troca, LocalSaude } from './types';
 import { centroPiloto } from '../lib/geo';
 
 export function agendaPadrao(tipo: Anuncio['tipoPreco']): Anuncio['agenda'] {
@@ -57,6 +57,17 @@ export function anunciosFicticios(): Anuncio[] {
 }
 
 /** Comunidades, encontros e trocas de exemplo (fictícios). */
+export function sementesSaude(): LocalSaude[] {
+  const c = centroPiloto();
+  const kmLat = 1 / 110.574, kmLng = 1 / (111.32 * Math.cos((c.lat * Math.PI) / 180));
+  const em = (dx: number, dy: number) => ({ lat: c.lat - dy * kmLat, lng: c.lng + dx * kmLng });
+  return [
+    { id: 'h1', nome: 'Academia Fôlego', tipo: 'academia', bairro: 'Centro', ...em(0.3, 0.2), donoId: 'demo-folego', segredo: 'folego-demo', status: 'aprovado', criadoEm: 0 },
+    { id: 'h2', nome: 'Box Maré Alta', tipo: 'box', bairro: 'Vila', ...em(-0.7, 0.5), donoId: 'demo-mare', segredo: 'mare-demo', status: 'aprovado', criadoEm: 0 },
+    { id: 'h3', nome: 'Estúdio Respira Pilates', tipo: 'estudio', bairro: 'Jardim', ...em(0.8, -0.6), donoId: 'demo-respira', segredo: 'respira-demo', status: 'aprovado', criadoEm: 0 },
+  ];
+}
+
 export function sementesComunidade(): { comunidades: Comunidade[]; encontros: Encontro[]; trocas: Troca[] } {
   const c = centroPiloto();
   const kmLat = 1 / 110.574, kmLng = 1 / (111.32 * Math.cos((c.lat * Math.PI) / 180));

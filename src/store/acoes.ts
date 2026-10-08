@@ -1,7 +1,7 @@
 import type { Anuncio, Encontro, Extra, Ingresso, Pacote, Reserva } from '../data/types';
 import { distanciaKm, type Ponto } from '../lib/geo';
 import {
-  FEIRA_MAX, FEIRA_MIN,
+  FEIRA_MAX, FEIRA_MIN, RAIO_CHECKIN_M, chaveSemana, codigoQR, diaLocal, janelaAtual,
   CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, MAX_INGRESSOS_COMPRA, TAXA_INGRESSO, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
   bloqueadoPorConferencia, celulaSemaforo, pedePagamentoPorFora, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
@@ -961,4 +961,61 @@ export function bonusBoaNota() {
     const v = ganhar(d, uid, 'boanota', 'Bônus do mês: nota 4,5 ou mais');
     if (v) notificar(d, uid, `Sua nota está ótima. Você ganhou ${v} celus de bônus do mês.`, '/celus');
   });
+}
+
+/* ---------- Saúde: check-in pelo QR da recepção ---------- */
+export function cadastrarLocalSaude(dados: { nome: string; tipo: import('../data/types').TipoSaude; bairro: string; lat: number; lng: number }): Resultado {
+  const e = precisaVerificado(); if (e) return falha(e);
+  if (dados.nome.trim().length < 3) return falha('Qual é o nome do local?');
+  const uid = sessao()!;
+  if (ler().locaisSaude.some((l) => l.donoId === uid && l.status !== 'recusado')) return falha('Você já tem um local de saúde cadastrado.');
+  mudar((d) => { d.locaisSaude.push({ id: novoId(), ...dados, nome: dados.nome.trim(), bairro: dados.bairro.trim(), donoId: uid, segredo: novoId() + novoId(), status: 'pendente', criadoEm: Date.now() }); });
+  return { ok: true };
+}
+
+export const decidirLocalSaude = (id: string, status: 'aprovado' | 'recusado') => mudar((d) => {
+  const l = d.locaisSaude.find((x) => x.id === id); if (!l) return;
+  l.status = status;
+  notificar(d, l.donoId, status === 'aprovado' ? `${l.nome} foi aprovado. Deixe o QR da Celus aberto na recepção.` : `${l.nome} não foi aprovado como parceiro de saúde.`, '/renda/saude');
+});
+export const pausarLocalSaude = (id: string) => mudar((d) => { const l = d.locaisSaude.find((x) => x.id === id); if (l && l.donoId === d.sessao) l.status = l.status === 'pausado' ? 'aprovado' : 'pausado'; });
+
+/** Treinos (dias distintos) de uma pessoa a partir de uma data. */
+const diasDeTreino = (d: DB, uid: string, desde: string) => new Set(d.checkinsSaude.filter((c) => c.userId === uid && diaLocal(c.t) >= desde).map((c) => diaLocal(c.t))).size;
+
+export type ResultadoTreino = { ok: true; local: string; ganho: number; bonus: string[] } | { ok: false; erro: string };
+/**
+ * Check-in de treino. Vale com o código do QR (muda a cada 30 s) e com a pessoa a até 200 m do local.
+ * Um treino por dia, em qualquer parceiro. Bônus por constância: 3 dias na semana e 12 no mês.
+ */
+export function checkinSaude(localId: string, codigo: string, onde: Ponto | null, demo = false): ResultadoTreino {
+  const e = precisaVerificado(); if (e) return { ok: false, erro: e };
+  const uid = sessao()!; const d0 = ler();
+  const l = d0.locaisSaude.find((x) => x.id === localId);
+  if (!l || l.status !== 'aprovado') return { ok: false, erro: 'Este local não é parceiro de saúde da Celus.' };
+  if (l.donoId === uid) return { ok: false, erro: 'O check-in é para quem treina, não para quem administra o local.' };
+  if (demo ? !l.donoId.startsWith('demo-') : ![janelaAtual(), janelaAtual() - 1].some((j) => codigoQR(l.segredo, j) === codigo.trim())) return { ok: false, erro: 'Código vencido. Escaneie de novo o QR da recepção.' };
+  if (!demo) {
+    if (!onde) return { ok: false, erro: 'Ative a localização: o check-in só vale dentro do local.' };
+    if (distanciaKm(onde, l) * 1000 > RAIO_CHECKIN_M) return { ok: false, erro: `Você precisa estar dentro do local (${l.nome}) para fazer o check-in.` };
+  }
+  const hoje = diaLocal(Date.now());
+  if (d0.checkinsSaude.some((c) => c.userId === uid && diaLocal(c.t) === hoje)) return { ok: false, erro: 'Você já registrou o treino de hoje. Volte amanhã!' };
+  let ganho = 0; const bonus: string[] = [];
+  mudar((d) => {
+    d.checkinsSaude.push({ id: novoId(), userId: uid, localId: l.id, t: Date.now() });
+    ganho += ganhar(d, uid, 'treino', `Treino em ${l.nome}`);
+    const u = d.usuarios[uid];
+    const semana = chaveSemana(), mes = hoje.slice(0, 7);
+    if (u.saudeSemana !== semana && diasDeTreino(d, uid, semana) >= 3) { u.saudeSemana = semana; const v = ganhar(d, uid, 'semana3', 'Constância: 3 treinos na semana'); ganho += v; if (v) bonus.push(`3 treinos na semana: +${v}`); }
+    if (u.saudeMes !== mes && diasDeTreino(d, uid, mes + '-01') >= 12) { u.saudeMes = mes; const v = ganhar(d, uid, 'mes12', 'Constância: 12 treinos no mês'); ganho += v; if (v) bonus.push(`12 treinos no mês: +${v}`); }
+  });
+  return { ok: true, local: l.nome, ganho, bonus };
+}
+
+export function progressoSaude(d: Pick<DB, 'checkinsSaude'>, uid: string) {
+  const semana = chaveSemana(), mes = diaLocal(Date.now()).slice(0, 7);
+  const dias = (desde: string) => new Set(d.checkinsSaude.filter((c) => c.userId === uid && diaLocal(c.t) >= desde).map((c) => diaLocal(c.t))).size;
+  const hoje = d.checkinsSaude.some((c) => c.userId === uid && diaLocal(c.t) === diaLocal(Date.now()));
+  return { semana: dias(semana), mes: dias(mes + '-01'), hoje };
 }

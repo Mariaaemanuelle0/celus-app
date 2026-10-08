@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { destinoDepoisDeEntrar } from '../components/Layout';
 import { Marca } from '../components/Layout';
 import { IconeCategoria } from '../components/ui';
 import { CATEGORIAS } from '../data/catalogo';
@@ -29,7 +30,7 @@ export function Entrar() {
     e.preventDefault(); setErro(''); setEnviando(true);
     const r = await entrar(f.email, f.senha);
     setEnviando(false);
-    if (r.ok) nav('/'); else setErro(r.erro);
+    if (r.ok) nav(destinoDepoisDeEntrar()); else setErro(r.erro);
   }
   const campo = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -113,8 +114,8 @@ export function Verificar() {
         <p className="lead">É o que garante que todo mundo na Celus é real e maior de idade. A selfie vira sua foto de perfil: quem recebe você confere que é você. Libera reservas, chat, stories e o Ficar.</p>
         <label className="upload">{doc ? <img src={doc} alt="Documento enviado" /> : <span>Foto do documento (RG ou CNH)</span>}<input id="v-doc" type="file" accept="image/*" capture="environment" onChange={ler(setDoc)} /></label>
         <label className="upload">{selfie ? <img src={selfie} alt="Selfie enviada" /> : <span>Selfie do seu rosto<br /><small className="hint">Vira sua foto de perfil. Sem óculos escuros, boné ou filtro.</small></span>}<input id="v-selfie" type="file" accept="image/*" capture="user" onChange={ler(setSelfie)} /></label>
-        <button className="btn" disabled={!doc || !selfie} onClick={() => { enviarDocumento(selfie ?? undefined); nav('/'); }}>Enviar para verificação</button>
-        <button className="btn ghost" onClick={() => nav('/')}>Fazer depois</button>
+        <button className="btn" disabled={!doc || !selfie} onClick={() => { enviarDocumento(selfie ?? undefined); nav(destinoDepoisDeEntrar()); }}>Enviar para verificação</button>
+        <button className="btn ghost" onClick={() => nav(destinoDepoisDeEntrar())}>Fazer depois</button>
         <p className="hint">No modo demonstração a verificação é aprovada na hora e as fotos não saem do aparelho. No app real, um serviço especializado confere documento e rosto.</p>
       </div>
     </div></div>

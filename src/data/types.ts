@@ -93,6 +93,9 @@ export type Usuario = {
   /** Bônus únicos já pagos (ex.: perfil completo) e mês do último bônus de boa nota (AAAA-MM). */
   bonus?: string[];
   bonusNotaMes?: string;
+  /** Semana (AAAA-Sn) e mês (AAAA-MM) dos últimos bônus de constância em saúde. */
+  saudeSemana?: string;
+  saudeMes?: string;
   /** Blocos do perfil que outras pessoas podem ver. */
   privacidade?: { comunidades: boolean; eventos: boolean; lugares: boolean };
   /** Onde quem anuncia recebe os repasses. */
@@ -192,3 +195,8 @@ export type Troca = {
   lat: number; lng: number; bairro: string; criadoEm: number;
   status: 'disponivel' | 'reservado' | 'entregue' | 'removido'; compradorId?: string; codigo?: string; reservadoEm?: number; entregueEm?: number; denuncias?: number;
 };
+
+/** Local parceiro de saúde (academia, estúdio, box...). Na recepção, uma tela mostra um QR que muda a cada 30 s. */
+export type TipoSaude = 'academia' | 'estudio' | 'box' | 'piscina' | 'quadra' | 'luta' | 'outro';
+export type LocalSaude = { id: string; nome: string; tipo: TipoSaude; bairro: string; lat: number; lng: number; donoId: string; segredo: string; status: 'pendente' | 'aprovado' | 'recusado' | 'pausado'; criadoEm: number };
+export type CheckinSaude = { id: string; userId: string; localId: string; t: number };
