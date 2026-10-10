@@ -72,7 +72,7 @@ export type Anuncio = {
   lotes?: Lote[];
 };
 
-export type Verificacao = 'nao_enviado' | 'em_analise' | 'verificado';
+export type Verificacao = 'nao_enviado' | 'em_analise' | 'verificado' | 'recusado';
 
 export type Usuario = {
   id: string;

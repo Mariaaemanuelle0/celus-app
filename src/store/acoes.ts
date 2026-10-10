@@ -8,6 +8,7 @@ import {
 import { ELEMENTOS_MAR, LOT_APORTE, LOT_BILHETE, LOT_ESCOLHE, LOT_INICIAL, LOT_PARA_PREMIO, LOT_POR_CONCURSO, LOT_PREMIO_2, LOT_SHOW_S, NOME_LOTERIA, PERIODOS, PREMIOS_RANKING, acertos, concursosEntre, elementoMar, periodoAnterior, proximoConcurso, quandoConcurso, resultadoConcurso, type Periodo } from '../lib/regras';
 import type { EstadoLoteria } from '../data/types';
 import { ranking } from '../lib/ranking';
+import { atualizarPerfilServidor, cadastrarServidor, enviarDocumentoServidor, entrarServidor, excluirContaServidor, noServidor, sairServidor, salvarPreferencias } from './conta';
 import { carteiraDe, devolverCelus, ganhar, ler, mudar, notificar, novoId, pagarReservado, reservarCelus, type DB } from './db';
 
 const DIA = 86_400_000;
@@ -30,7 +31,7 @@ const falha = (erro: string): { ok: false; erro: string } => ({ ok: false, erro 
 const sessao = () => ler().sessao;
 
 /* ---------- Conta ---------- */
-export async function cadastrar(dados: { nome: string; email: string; senha: string; nascimento: string; aceite: boolean }): Promise<Resultado> {
+export async function cadastrar(dados: { nome: string; email: string; senha: string; nascimento: string; aceite: boolean }): Promise<{ ok: true; confirmar?: boolean } | { ok: false; erro: string }> {
   const email = dados.email.trim().toLowerCase();
   if (dados.nome.trim().length < 3) return falha('Digite seu nome completo.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return falha('Digite um e-mail válido.');
@@ -38,6 +39,7 @@ export async function cadastrar(dados: { nome: string; email: string; senha: str
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.nascimento)) return falha('Informe sua data de nascimento.');
   if (idade(dados.nascimento) < IDADE_MINIMA) return falha('menor');
   if (!dados.aceite) return falha('Para continuar, aceite os termos de uso e a política de privacidade.');
+  if (noServidor) return cadastrarServidor({ ...dados, email });
   if (Object.values(ler().usuarios).some((u) => u.email === email)) return falha('Já existe uma conta com este e-mail. Entre com sua senha.');
   const senhaHash = await hash(dados.senha);
   const id = novoId();
@@ -50,18 +52,21 @@ export async function cadastrar(dados: { nome: string; email: string; senha: str
 }
 
 export async function entrar(email: string, senha: string): Promise<Resultado> {
+  if (noServidor) return entrarServidor(email.trim().toLowerCase(), senha);
   const u = Object.values(ler().usuarios).find((x) => x.email === email.trim().toLowerCase());
   if (!u || u.senhaHash !== (await hash(senha))) return falha('E-mail ou senha incorretos.');
   mudar((d) => { d.sessao = u.id; });
   return { ok: true };
 }
 
-export const sair = () => mudar((d) => { d.sessao = null; });
+export const sair = () => (noServidor ? sairServidor() : mudar((d) => { d.sessao = null; }));
 
 /** Modo demonstração: o documento é "analisado" na hora. No app real, vai para um serviço de verificação. */
-export function enviarDocumento(selfie?: string) {
-  const id = sessao(); if (!id) return;
-  mudar((d) => { d.usuarios[id].verificacao = 'verificado'; if (selfie) d.usuarios[id].foto = selfie; bonusPerfil(d, id); });
+export async function enviarDocumento(doc: string, selfie: string): Promise<Resultado> {
+  const id = sessao(); if (!id) return falha('Entre na sua conta.');
+  if (noServidor) return enviarDocumentoServidor(doc, selfie);
+  mudar((d) => { d.usuarios[id].verificacao = 'verificado'; d.usuarios[id].foto = selfie; bonusPerfil(d, id); });
+  return { ok: true };
 }
 
 /** Perfil completo (selfie, identidade verificada e bio) rende um bônus único. */
@@ -74,8 +79,9 @@ function bonusPerfil(d: DB, id: string): number {
 const SEM_FOTO = 'Coloque uma foto do seu rosto no perfil. Quem recebe você precisa saber que é você.';
 const semFoto = () => { const id = sessao(); return !id || !ler().usuarios[id]?.foto; };
 
-export const alternarEquipe = () => { const id = sessao(); if (id) mudar((d) => { d.usuarios[id].equipeCelus = !d.usuarios[id].equipeCelus; }); };
-export const alternarAlbum = () => { const id = sessao(); if (id) mudar((d) => { d.usuarios[id].albumPublico = !d.usuarios[id].albumPublico; }); };
+/** Só no modo demonstração. Com o servidor, a equipe é marcada pela Celus no banco. */
+export const alternarEquipe = () => { const id = sessao(); if (id && !noServidor) mudar((d) => { d.usuarios[id].equipeCelus = !d.usuarios[id].equipeCelus; }); };
+export const alternarAlbum = () => { const id = sessao(); if (id) { mudar((d) => { d.usuarios[id].albumPublico = !d.usuarios[id].albumPublico; }); salvarPreferencias(); } };
 
 /* ---------- Disponibilidade ---------- */
 const diaStr = (t: number) => { const x = new Date(t); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
@@ -521,11 +527,16 @@ export function storiesVisiveis(stories: import('../data/types').Story[], denunc
 }
 
 /* ---------- Perfil e notificações ---------- */
-export function atualizarPerfil(dados: { foto?: string; bio: string }): number {
-  const id = sessao(); if (!id) return 0;
+export async function atualizarPerfil(dados: { foto?: string; bio: string }): Promise<{ ok: true; ganho: number } | { ok: false; erro: string }> {
+  const id = sessao(); if (!id) return falha('Entre na sua conta.');
   let ganho = 0;
+  if (noServidor) {
+    const r = await atualizarPerfilServidor(dados); if (!r.ok) return r;
+    mudar((d) => { ganho = bonusPerfil(d, id); });
+    return { ok: true, ganho };
+  }
   mudar((d) => { const u = d.usuarios[id]; if (dados.foto !== undefined) u.foto = dados.foto || undefined; u.bio = dados.bio.trim().slice(0, 160) || undefined; ganho = bonusPerfil(d, id); });
-  return ganho;
+  return { ok: true, ganho };
 }
 
 export const marcarLidas = () => { const id = sessao(); if (id) mudar((d) => { d.notificacoes.forEach((n) => { if (n.userId === id) n.lida = true; }); }); };
@@ -761,11 +772,12 @@ export function salvarRecebimento(tipo: NonNullable<import('../data/types').Usua
 export async function excluirConta(senha: string): Promise<Resultado> {
   const d0 = ler(); const uid = d0.sessao; if (!uid) return falha('Entre na sua conta.');
   const u = d0.usuarios[uid];
-  if (u.senhaHash !== (await hash(senha))) return falha('Senha incorreta.');
+  if (!noServidor && u.senhaHash !== (await hash(senha))) return falha('Senha incorreta.');
   const meus = new Set(d0.anuncios.filter((a) => a.donoId === uid).map((a) => a.id));
   const ativo = (r: Reserva) => ['confirmada', 'em_uso', 'solicitado', 'aceito', 'a_caminho', 'em_andamento'].includes(r.status);
   if (d0.reservas.some((r) => r.userId === uid && ativo(r))) return falha('Você tem reservas em andamento. Cancele ou conclua antes de excluir a conta.');
   if (d0.reservas.some((r) => meus.has(r.anuncioId) && ativo(r))) return falha('Seus anúncios têm reservas em andamento. Conclua ou cancele antes de excluir a conta.');
+  if (noServidor) { const r = await excluirContaServidor(senha); if (!r.ok) return r; }
   mudar((d) => {
     delete d.usuarios[uid]; delete d.carteiras[uid];
     d.sonhos = d.sonhos.filter((x) => x.userId !== uid);
@@ -955,7 +967,7 @@ export const removerTroca = (id: string) => mudar((d) => { const x = d.trocas.fi
 export const denunciarTroca = (id: string) => mudar((d) => { const x = d.trocas.find((y) => y.id === id); if (x) { x.denuncias = (x.denuncias ?? 0) + 1; if (x.denuncias >= 3 && x.status === 'disponivel') x.status = 'removido'; } });
 
 /* ---------- Privacidade do perfil ---------- */
-export const alternarPrivacidade = (bloco: 'comunidades' | 'eventos' | 'lugares') => { const id = sessao(); if (id) mudar((d) => { const u = d.usuarios[id]; const p = u.privacidade ?? { comunidades: true, eventos: true, lugares: false }; u.privacidade = { ...p, [bloco]: !p[bloco] }; }); };
+export const alternarPrivacidade = (bloco: 'comunidades' | 'eventos' | 'lugares') => { const id = sessao(); if (id) { mudar((d) => { const u = d.usuarios[id]; const p = u.privacidade ?? { comunidades: true, eventos: true, lugares: false }; u.privacidade = { ...p, [bloco]: !p[bloco] }; }); salvarPreferencias(); } };
 
 /* ---------- Bônus do mês por boa nota ---------- */
 /** Uma vez por mês: quem tem nota média 4,5 ou mais (com 3 avaliações ou mais), como hóspede ou como anfitrião, ganha o bônus. */

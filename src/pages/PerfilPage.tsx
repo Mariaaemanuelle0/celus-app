@@ -11,6 +11,7 @@ import { apagarTudo, carteiraDe, useDB, useUsuario } from '../store/db';
 import { CELUS_EM_REAIS, GANHOS, NOME_LOTERIA } from '../lib/regras';
 import { NOME_TROCAS, useBlocosPerfil } from '../lib/perfil';
 import { CartaoSaude } from './Saude';
+import { noServidor } from '../store/conta';
 
 const STATUS: Record<string, string> = { confirmada: 'Confirmada', em_uso: 'Em uso', concluida: 'Concluída', cancelada: 'Cancelada', solicitado: 'Chamado enviado', aceito: 'Aceito', a_caminho: 'A caminho' };
 const data = (t: number) => new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
@@ -45,7 +46,7 @@ export function PerfilPage() {
         <button className={`avatar ${meusStories.length ? 'comstory' : ''}`} onClick={() => meusStories.length && setVerStories(true)} aria-label="Seus stories">{u.foto ? <img src={u.foto} alt="" /> : iniciais}</button>
         <div className="sp" style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: 21, margin: 0 }}>{u.nome}</h1>
-          <div className="meta">{u.verificacao === 'verificado' ? 'Identidade verificada' : 'Identidade não verificada'}{media ? `. Nota ${media.toFixed(1).replace('.', ',')} como hóspede` : ''}</div>
+          <div className="meta">{u.verificacao === 'verificado' ? 'Identidade verificada' : u.verificacao === 'em_analise' ? 'Identidade em análise' : 'Identidade não verificada'}{media ? `. Nota ${media.toFixed(1).replace('.', ',')} como hóspede` : ''}</div>
         </div>
       </div>
       {u.bio ? <p className="desc" style={{ margin: '12px 0 0' }}>{u.bio}</p> : null}
@@ -53,7 +54,7 @@ export function PerfilPage() {
       <Link to="/perfil/editar" className="btn sm ghost" style={{ marginTop: 12 }}>{u.foto ? 'Editar perfil' : 'Tirar selfie para o perfil'}</Link>
       {verStories && <Visualizador lista={meusStories} fechar={() => setVerStories(false)} />}
       {!u.foto && <Link to="/perfil/editar" className="alerta warn" style={{ display: 'block', marginTop: 14, textDecoration: 'none', color: 'var(--text)' }}><b>Falta a foto do seu rosto.</b> Sem ela não dá para reservar, chamar profissional nem anunciar.</Link>}
-      {u.verificacao !== 'verificado' && <Link to="/verificar" className="alerta warn" style={{ display: 'block', marginTop: 14, textDecoration: 'none', color: 'var(--text)' }}><b>Verifique sua identidade</b> para liberar chat, stories e estadias.</Link>}
+      {(u.verificacao === 'nao_enviado' || u.verificacao === 'recusado') && <Link to="/verificar" className="alerta warn" style={{ display: 'block', marginTop: 14, textDecoration: 'none', color: 'var(--text)' }}><b>Verifique sua identidade</b> para liberar chat, stories e estadias.</Link>}
 
       <Link to="/celus" className="walletmini">
         <span className="row" style={{ flexWrap: 'nowrap', gap: 10 }}><Moeda tamanho={26} /><span><span className="eyebrow" style={{ display: 'block' }}>Meus celus</span><b className="num" style={{ fontSize: 20, fontWeight: 500 }}>{saldo}</b></span></span>
@@ -135,13 +136,15 @@ export function PerfilPage() {
       <div className="box infos" style={{ marginTop: 0 }}>
         <div className="sumline"><span>E-mail</span><span className="hint">{u.email}</span></div>
         <div className="sumline"><span>Idade</span><span className="hint">{idade(u.nascimento)} anos</span></div>
-        <label className="sumline check" style={{ border: 0 }}><span>Sou da equipe Celus (curadoria)</span><input type="checkbox" checked={u.equipeCelus} onChange={alternarEquipe} /></label>
+        {noServidor
+          ? <div className="sumline" style={{ border: 0 }}><span>Equipe Celus</span><span className="hint">{u.equipeCelus ? 'Sim, acesso à curadoria' : 'Não'}</span></div>
+          : <label className="sumline check" style={{ border: 0 }}><span>Sou da equipe Celus (curadoria)</span><input type="checkbox" checked={u.equipeCelus} onChange={alternarEquipe} /></label>}
       </div>
       <div className="stack" style={{ marginTop: 12 }}>
-        <button className="btn ghost" onClick={() => { sair(); nav('/entrar'); }}>Sair da conta</button>
+        <button className="btn ghost" onClick={async () => { await sair(); nav('/entrar'); }}>Sair da conta</button>
         <Link to="/perfil/excluir" className="back" style={{ textDecoration: 'none' }}>Excluir minha conta</Link>
-        {!confirmaApagar ? <button className="back" onClick={() => setConfirmaApagar(true)}>Apagar todos os dados de teste deste aparelho</button>
-          : <div className="alerta bad">Isso apaga contas, reservas e anúncios de teste deste aparelho. <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => { apagarTudo(); nav('/entrar'); }}>Apagar</button><button className="btn sm ghost" onClick={() => setConfirmaApagar(false)}>Cancelar</button></div></div>}
+        {!noServidor && (!confirmaApagar ? <button className="back" onClick={() => setConfirmaApagar(true)}>Apagar todos os dados de teste deste aparelho</button>
+          : <div className="alerta bad">Isso apaga contas, reservas e anúncios de teste deste aparelho. <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => { apagarTudo(); nav('/entrar'); }}>Apagar</button><button className="btn sm ghost" onClick={() => setConfirmaApagar(false)}>Cancelar</button></div></div>)}
       </div>
     </>
   );
@@ -206,6 +209,8 @@ export function EditarPerfil() {
   const nav = useNavigate();
   const [foto, setFoto] = useState<string | undefined>(u.foto);
   const [bio, setBio] = useState(u.bio ?? '');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
   return (
     <>
       <Voltar para="/perfil" />
@@ -219,7 +224,9 @@ export function EditarPerfil() {
         </div>
       </div>
       <label className="campo" style={{ marginTop: 18 }}>Bio<textarea id="p-bio" rows={3} maxLength={160} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Ex.: Designer, moro no Centro, uso a Celus entre reuniões." /><span className="hint">{bio.length}/160</span></label>
-      <button className="btn" style={{ marginTop: 16 }} disabled={!foto} onClick={() => { const g = atualizarPerfil({ foto, bio }); toast(g ? `Perfil completo. +${g} celus` : 'Perfil atualizado'); nav('/perfil'); }}>Salvar</button>
+      {erro && <p className="erro" style={{ marginTop: 10 }}>{erro}</p>}
+      {noServidor && foto !== u.foto && u.verificacao === 'verificado' && <p className="hint" style={{ marginTop: 10 }}>Foto nova passa pela conferência da equipe Celus de novo.</p>}
+      <button className="btn" style={{ marginTop: 16 }} disabled={!foto || salvando} onClick={async () => { setSalvando(true); const r = await atualizarPerfil({ foto, bio }); setSalvando(false); if (!r.ok) { setErro(r.erro); return; } toast(r.ganho ? `Perfil completo. +${r.ganho} celus` : 'Perfil atualizado'); nav('/perfil'); }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
     </>
   );
 }

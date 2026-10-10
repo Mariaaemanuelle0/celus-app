@@ -25,7 +25,8 @@ Leia antes de qualquer tarefa:
 ## Comandos
 - `npm run dev` — servidor local
 - `npm run build` — checagem de tipos + build de produção
-- `npm run teste:fluxos` — testes de ponta a ponta (com `npm run preview` rodando; outro endereço via `CELUS_URL`). Rodar antes de cada publicação. Na primeira vez: `npx playwright install chromium`.
+- `npm run teste:fluxos` — testes de ponta a ponta. Rodar antes de cada publicação: `npm run build:teste` (sempre no modo demonstração, nunca toca no Supabase de verdade) e `npm run preview` rodando; outro endereço via `CELUS_URL`. Na primeira vez: `npx playwright install chromium`.
+- Supabase: rodar os arquivos de `supabase/migrations/` em ordem no SQL Editor do painel. Com `.env` preenchido, o app usa o servidor para contas; sem ele, fica no modo demonstração.
 
 ## Identidade visual
 Preto e azul-marinho com acento azul elétrico. Tokens em `src/styles/tokens.css`. Fontes: Unbounded (títulos), Instrument Sans (texto), JetBrains Mono (números, preços, timer).

@@ -17,7 +17,11 @@ App no ar: https://celus-app.vercel.app (cada push na main publica sozinho na Ve
 ## Próximos passos
 1. Currículo de freelancer (histórico e estrelas visíveis só para quem contrata).
 2. Mostrar comunidades e parceiros de saúde no mapa e no Feed.
-3. Supabase (login, banco, QR de saúde conferido no servidor). A fundadora cria a conta; nunca usar a chave service_role.
+3. Supabase, por etapas. Projeto criado (região São Paulo); migrações 0001 e 0002 rodadas no SQL Editor.
+   - Etapa 1 pronta: contas, login, esqueci a senha, perfil, selfie e documento no armazenamento, verificação aprovada pela equipe na Curadoria, excluir conta. Equipe marcada por SQL.
+   - Falta: chaves na Vercel (depois da revisão do login), e-mail de confirmação em português com serviço de envio próprio.
+   - Próximas etapas: carteira de celus no servidor, anúncios e reservas, loteria/ranking/QR de saúde, chat/stories/comunidades.
+   - Nunca usar a chave service_role no app.
 4. Pagamento real com split (precisa de CNPJ).
 5. Termos de uso com o advogado (lista em `docs/DECISOES.md`), incluindo loteria e ranking.
 6. Desafios e circuitos de corrida no mapa.

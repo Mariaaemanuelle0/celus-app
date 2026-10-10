@@ -7,9 +7,10 @@ import { CATEGORIAS } from '../data/catalogo';
 import type { Categoria } from '../data/types';
 import { lerImagem } from '../components/ui';
 import { cadastrar, entrar, enviarDocumento } from '../store/acoes';
+import { esqueciSenha, noServidor, trocarSenha } from '../store/conta';
 import { useUsuario } from '../store/db';
 
-type Tela = 'inicio' | 'cadastro' | 'entrar' | 'menor' | 'senha';
+type Tela = 'inicio' | 'cadastro' | 'entrar' | 'menor' | 'senha' | 'confirmar' | 'enviado';
 
 export function Entrar() {
   const [tela, setTela] = useState<Tela>('inicio');
@@ -22,7 +23,7 @@ export function Entrar() {
     e.preventDefault(); setErro(''); setEnviando(true);
     const r = await cadastrar(f);
     setEnviando(false);
-    if (r.ok) return nav('/verificar');
+    if (r.ok) return r.confirmar ? setTela('confirmar') : nav('/verificar');
     if (r.erro === 'menor') return setTela('menor');
     setErro(r.erro);
   }
@@ -31,6 +32,12 @@ export function Entrar() {
     const r = await entrar(f.email, f.senha);
     setEnviando(false);
     if (r.ok) nav(destinoDepoisDeEntrar()); else setErro(r.erro);
+  }
+  async function onEsqueci(e: FormEvent) {
+    e.preventDefault(); setErro(''); setEnviando(true);
+    const r = await esqueciSenha(f.email);
+    setEnviando(false);
+    if (r.ok) setTela('enviado'); else setErro(r.erro);
   }
   const campo = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
@@ -78,7 +85,35 @@ export function Entrar() {
         </form>
       )}
 
-      {tela === 'senha' && (
+      {tela === 'confirmar' && (
+        <div className="stack">
+          <h1>Confira seu e-mail</h1>
+          <p className="lead">Mandamos um link para <b>{f.email}</b>. Toque nele para ativar sua conta e depois entre com sua senha.</p>
+          <p className="hint">Não chegou? Veja a caixa de spam ou lixo eletrônico.</p>
+          <button className="btn ghost" onClick={() => setTela('entrar')}>Já confirmei, quero entrar</button>
+        </div>
+      )}
+
+      {tela === 'senha' && noServidor && (
+        <form className="stack" onSubmit={onEsqueci} noValidate>
+          <h1>Esqueci minha senha</h1>
+          <p className="lead">Digite seu e-mail. Mandamos um link para você criar uma senha nova.</p>
+          <label className="campo">E-mail<input id="s-email" type="email" autoComplete="email" value={f.email} onChange={campo('email')} /></label>
+          {erro && <p className="erro" role="alert">{erro}</p>}
+          <button className="btn" disabled={enviando || !f.email}>Enviar link</button>
+          <button type="button" className="back" onClick={() => { setErro(''); setTela('entrar'); }}>Voltar para entrar</button>
+        </form>
+      )}
+
+      {tela === 'enviado' && (
+        <div className="stack">
+          <h1>Link enviado</h1>
+          <p className="lead">Se existir uma conta com <b>{f.email}</b>, o link para criar uma senha nova chega em alguns minutos.</p>
+          <button className="btn ghost" onClick={() => setTela('entrar')}>Voltar para entrar</button>
+        </div>
+      )}
+
+      {tela === 'senha' && !noServidor && (
         <div className="stack">
           <h1>Esqueci minha senha</h1>
           <p className="lead">Quando o servidor da Celus estiver ligado, você digita seu e-mail aqui e recebe um link para criar uma senha nova.</p>
@@ -94,7 +129,7 @@ export function Entrar() {
           <button className="btn ghost" onClick={() => { setF({ nome: '', email: '', senha: '', nascimento: '', aceite: false }); setTela('inicio'); }}>Voltar ao início</button>
         </div>
       )}
-      <p className="demo-aviso">Modo demonstração: sua conta fica salva só neste aparelho até o banco de dados ser ligado.</p>
+      {!noServidor && <p className="demo-aviso">Modo demonstração: sua conta fica salva só neste aparelho até o banco de dados ser ligado.</p>}
     </div></div>
   );
 }
@@ -104,7 +139,25 @@ export function Verificar() {
   const nav = useNavigate();
   const [doc, setDoc] = useState<string | null>(null);
   const [selfie, setSelfie] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
   if (!u) return null;
+  const enviar = async () => {
+    setErro(''); setEnviando(true);
+    const r = await enviarDocumento(doc!, selfie!);
+    setEnviando(false);
+    if (r.ok) nav(destinoDepoisDeEntrar()); else setErro(r.erro);
+  };
+  if (u.verificacao === 'em_analise') return (
+    <div className="shell"><div className="app entrada">
+      <div className="entrada-topo"><Marca /><span>Celus</span></div>
+      <div className="stack">
+        <h1>Identidade em análise</h1>
+        <p className="lead">Recebemos seu documento e sua selfie. A equipe Celus confere e você recebe a liberação aqui no app. Enquanto isso, já dá para explorar o mapa.</p>
+        <button className="btn" onClick={() => nav(destinoDepoisDeEntrar())}>Abrir o mapa</button>
+      </div>
+    </div></div>
+  );
   const ler = (set: (s: string) => void) => async (e: { target: HTMLInputElement }) => { const file = e.target.files?.[0]; if (file) set(await lerImagem(file)); };
   return (
     <div className="shell"><div className="app entrada">
@@ -114,10 +167,35 @@ export function Verificar() {
         <p className="lead">É o que garante que todo mundo na Celus é real e maior de idade. A selfie vira sua foto de perfil: quem recebe você confere que é você. Libera reservas, chat, stories e o Ficar.</p>
         <label className="upload">{doc ? <img src={doc} alt="Documento enviado" /> : <span>Foto do documento (RG ou CNH)</span>}<input id="v-doc" type="file" accept="image/*" capture="environment" onChange={ler(setDoc)} /></label>
         <label className="upload">{selfie ? <img src={selfie} alt="Selfie enviada" /> : <span>Selfie do seu rosto<br /><small className="hint">Vira sua foto de perfil. Sem óculos escuros, boné ou filtro.</small></span>}<input id="v-selfie" type="file" accept="image/*" capture="user" onChange={ler(setSelfie)} /></label>
-        <button className="btn" disabled={!doc || !selfie} onClick={() => { enviarDocumento(selfie ?? undefined); nav(destinoDepoisDeEntrar()); }}>Enviar para verificação</button>
+        {u.verificacao === 'recusado' && <div className="alerta warn">Não conseguimos confirmar sua identidade. Envie fotos novas, com boa luz e o documento inteiro aparecendo.</div>}
+        {erro && <p className="erro" role="alert">{erro}</p>}
+        <button className="btn" disabled={!doc || !selfie || enviando} onClick={enviar}>{enviando ? 'Enviando...' : 'Enviar para verificação'}</button>
         <button className="btn ghost" onClick={() => nav(destinoDepoisDeEntrar())}>Fazer depois</button>
-        <p className="hint">No modo demonstração a verificação é aprovada na hora e as fotos não saem do aparelho. No app real, um serviço especializado confere documento e rosto.</p>
+        <p className="hint">{noServidor ? 'O documento fica guardado com acesso restrito à equipe Celus, só para conferir que é você.' : 'No modo demonstração a verificação é aprovada na hora e as fotos não saem do aparelho. No app real, um serviço especializado confere documento e rosto.'}</p>
       </div>
+    </div></div>
+  );
+}
+
+/** Aberta pelo link do e-mail de "Esqueci minha senha". */
+export function NovaSenha() {
+  const nav = useNavigate();
+  const [senha, setSenha] = useState('');
+  const [erro, setErro] = useState('');
+  const [ok, setOk] = useState(false);
+  return (
+    <div className="shell"><div className="app entrada">
+      <div className="entrada-topo"><Marca /><span>Celus</span></div>
+      {ok ? (
+        <div className="stack"><h1>Senha nova salva</h1><button className="btn" onClick={() => nav('/')}>Abrir o app</button></div>
+      ) : (
+        <form className="stack" noValidate onSubmit={async (e) => { e.preventDefault(); const r = await trocarSenha(senha); if (r.ok) setOk(true); else setErro(r.erro); }}>
+          <h1>Crie uma senha nova</h1>
+          <label className="campo">Senha nova<input id="n-senha" type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} /><span className="hint">Pelo menos 8 caracteres.</span></label>
+          {erro && <p className="erro" role="alert">{erro}</p>}
+          <button className="btn" disabled={senha.length < 8}>Salvar senha</button>
+        </form>
+      )}
     </div></div>
   );
 }

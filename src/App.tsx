@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { lazy, type ComponentType } from 'react';
-import { Entrar, Verificar } from './pages/Entrar';
+import { Entrar, NovaSenha, Verificar } from './pages/Entrar';
 
 // Cada tela é baixada só quando a pessoa abre: a entrada no app fica leve e o mapa vem depois.
 const sob = <M extends Record<string, ComponentType>>(f: () => Promise<M>, nome: keyof M) => lazy(() => f().then((m) => ({ default: m[nome] })));
@@ -49,6 +49,7 @@ export default function App() {
       <Routes>
         <Route path="entrar" element={<SoDeslogado><Entrar /></SoDeslogado>} />
         <Route path="verificar" element={<Verificar />} />
+        <Route path="nova-senha" element={<NovaSenha />} />
         <Route element={<Layout />}>
           <Route index element={<MapPage />} />
           <Route path="anuncio/:id" element={<AnuncioPage />} />

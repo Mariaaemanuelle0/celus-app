@@ -10,6 +10,7 @@ import { emDestaque } from '../data/useAnuncios';
 import { ComoChegar } from '../components/Rota';
 import { brl, dataEvento, rotuloPreco, virgula } from '../lib/format';
 import { TIPOS_SAUDE } from '../lib/regras';
+import { decidirVerificacao, noServidor, verificacoesPendentes, type PedidoVerificacao } from '../store/conta';
 import { centroPiloto } from '../lib/geo';
 import {
   COMISSAO, COMISSAO_REDUZIDA, LIMITE_SEM_SUPERVISAO, TAXA_INGRESSO, bloqueadoPorConferencia, jornada, parteAnfitriao, pedePagamentoPorFora, precisaSupervisao, repasse,
@@ -698,6 +699,34 @@ export function AgendaPage() {
 }
 
 /* ---------------- Curadoria ---------------- */
+/** Identidades enviadas para conferir: a selfie bate com o documento e a pessoa tem 18 anos ou mais? */
+function Identidades() {
+  const [lista, setLista] = useState<PedidoVerificacao[] | null>(null);
+  const [vez, setVez] = useState(0);
+  useEffect(() => { verificacoesPendentes().then(setLista); }, [vez]);
+  const decidir = async (id: string, aprovar: boolean) => {
+    const r = await decidirVerificacao(id, aprovar);
+    toast(r.ok ? (aprovar ? 'Identidade aprovada' : 'Identidade recusada') : r.erro);
+    setVez((v) => v + 1);
+  };
+  return (
+    <>
+      <h2>Identidades para conferir {lista?.length ? <span className="coin">{lista.length}</span> : null}</h2>
+      {lista === null ? <div className="empty">Carregando...</div> : lista.length ? <div className="stack">{lista.map((p) => (
+        <div key={p.id} className="box" style={{ padding: 14 }}>
+          <b>{p.nome}</b>
+          <div className="grid2" style={{ marginTop: 10 }}>
+            {p.foto ? <img src={p.foto} alt="Selfie" className="denimg" style={{ margin: 0 }} /> : <div className="empty">Sem selfie</div>}
+            {p.doc ? <a href={p.doc} target="_blank" rel="noreferrer"><img src={p.doc} alt="Documento" className="denimg" style={{ margin: 0 }} /></a> : <div className="empty">Sem documento</div>}
+          </div>
+          <div className="hint" style={{ marginTop: 8 }}>Confira se o rosto é o mesmo do documento e se a pessoa tem 18 anos ou mais.</div>
+          <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => decidir(p.id, true)}>Aprovar</button><button className="btn sm ghost" onClick={() => decidir(p.id, false)}>Recusar</button></div>
+        </div>
+      ))}</div> : <div className="empty">Nenhuma identidade esperando.</div>}
+    </>
+  );
+}
+
 export function Curadoria() {
   const u = useUsuario()!;
   const anuncios = useDB((d) => d.anuncios);
@@ -709,7 +738,7 @@ export function Curadoria() {
   if (!u.equipeCelus) return (
     <>
       <h1>Curadoria</h1>
-      <p className="lead">Área da equipe Celus: aprova anúncios e decide denúncias. Para testar, ative "Sou da equipe Celus" no seu Perfil.</p>
+      <p className="lead">Área da equipe Celus: aprova anúncios e decide denúncias. {noServidor ? 'A equipe é liberada pela Celus.' : 'Para testar, ative "Sou da equipe Celus" no seu Perfil.'}</p>
       <Link className="btn ghost" to="/perfil">Ir para o Perfil</Link>
     </>
   );
@@ -724,6 +753,7 @@ export function Curadoria() {
     <>
       <h1>Curadoria</h1>
       <p className="lead">Nada entra no mapa sem passar por aqui, e só a curadoria remove story de cliente.</p>
+      {noServidor && <Identidades />}
       <h2>Stories denunciados {denuncias.length ? <span className="coin">{denuncias.length}</span> : null}</h2>
       {denuncias.length ? <div className="stack">{denuncias.map((d) => {
         const s = stories.find((x) => x.id === d.storyId); const a = anuncios.find((x) => x.id === s?.anuncioId);

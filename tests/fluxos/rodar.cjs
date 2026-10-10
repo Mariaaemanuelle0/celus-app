@@ -1,5 +1,5 @@
 // Roda todos os testes de fluxo contra o app (por padrão, o build local em http://localhost:4173).
-// Uso: npm run build && npm run preview  (em outro terminal)  e  npm run teste:fluxos
+// Uso: npm run build:teste && npm run preview  (em outro terminal)  e  npm run teste:fluxos
 // Para testar o site publicado: CELUS_URL=https://celus-app.vercel.app npm run teste:fluxos
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
