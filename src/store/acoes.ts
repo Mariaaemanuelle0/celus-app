@@ -5,6 +5,9 @@ import {
   CHAT_MS, COMISSAO, COMISSAO_REDUZIDA, MAX_INGRESSOS_COMPRA, TAXA_INGRESSO, IDADE_MINIMA, LIMITE_SEM_SUPERVISAO, STORY_MS, TAXA_SERVICO,
   bloqueadoPorConferencia, celulaSemaforo, pedePagamentoPorFora, taxaUsuarioDe, cobranca, idade, jornada, moderar, precisaSupervisao, reembolso, slotDe,
 } from '../lib/regras';
+import { ELEMENTOS_MAR, LOT_APORTE, LOT_BILHETE, LOT_ESCOLHE, LOT_INICIAL, LOT_PARA_PREMIO, LOT_POR_CONCURSO, LOT_PREMIO_2, LOT_SHOW_S, NOME_LOTERIA, PERIODOS, PREMIOS_RANKING, acertos, concursosEntre, elementoMar, periodoAnterior, proximoConcurso, quandoConcurso, resultadoConcurso, type Periodo } from '../lib/regras';
+import type { EstadoLoteria } from '../data/types';
+import { ranking } from '../lib/ranking';
 import { carteiraDe, devolverCelus, ganhar, ler, mudar, notificar, novoId, pagarReservado, reservarCelus, type DB } from './db';
 
 const DIA = 86_400_000;
@@ -477,7 +480,15 @@ export const decidirAnuncio = (id: string, status: 'aprovado' | 'recusado') => m
   const a = d.anuncios.find((x) => x.id === id); if (!a) return;
   a.status = status;
   notificar(d, a.donoId, status === 'aprovado' ? `${a.titulo} foi aprovado e já está no mapa.` : `${a.titulo} não foi aprovado. Revise as fotos e o texto e envie de novo.`, '/renda');
+  if (status === 'aprovado') bonusAdesao(d, a.donoId, a.titulo);
 });
+
+/** Comércio, espaço ou academia aprovado pela primeira vez: a conta ganha o bônus de adesão (uma vez só). */
+function bonusAdesao(d: DB, uid: string, nome: string) {
+  if (!d.usuarios[uid]) return;
+  const v = ganhar(d, uid, 'adesao', `Adesão à Celus: ${nome}`);
+  if (v) notificar(d, uid, `Bem-vindo à Celus! ${nome} entrou no mapa e você ganhou ${v} celus. Agora você também está no ranking dos comércios.`, '/ranking');
+}
 
 export const conferirRevisao = (id: string, manter: boolean) => mudar((d) => {
   const a = d.anuncios.find((x) => x.id === id); if (!a) return;
@@ -547,6 +558,7 @@ export function assumirAnuncio(codigoOuId: string): Resultado {
     const por = x.convite!.porId;
     x.donoId = uid; x.status = 'aprovado'; x.convite = { ...x.convite!, aceitoEm: Date.now() };
     notificar(d, por, `${d.usuarios[uid]?.nome.split(' ')[0] ?? 'O anfitrião'} assumiu ${x.titulo}. Já está no mapa.`, '/renda');
+    bonusAdesao(d, uid, x.titulo);
   });
   return { ok: true };
 }
@@ -977,6 +989,7 @@ export const decidirLocalSaude = (id: string, status: 'aprovado' | 'recusado') =
   const l = d.locaisSaude.find((x) => x.id === id); if (!l) return;
   l.status = status;
   notificar(d, l.donoId, status === 'aprovado' ? `${l.nome} foi aprovado. Deixe o QR da Celus aberto na recepção.` : `${l.nome} não foi aprovado como parceiro de saúde.`, '/renda/saude');
+  if (status === 'aprovado') bonusAdesao(d, l.donoId, l.nome);
 });
 export const pausarLocalSaude = (id: string) => mudar((d) => { const l = d.locaisSaude.find((x) => x.id === id); if (l && l.donoId === d.sessao) l.status = l.status === 'pausado' ? 'aprovado' : 'pausado'; });
 
@@ -1018,4 +1031,102 @@ export function progressoSaude(d: Pick<DB, 'checkinsSaude'>, uid: string) {
   const dias = (desde: string) => new Set(d.checkinsSaude.filter((c) => c.userId === uid && diaLocal(c.t) >= desde).map((c) => diaLocal(c.t))).size;
   const hoje = d.checkinsSaude.some((c) => c.userId === uid && diaLocal(c.t) === diaLocal(Date.now()));
   return { semana: dias(semana), mes: dias(mes + '-01'), hoje };
+}
+
+/* ---------- Ranking: coroação no fim de cada semana, mês e ano ---------- */
+/** Paga o pódio dos períodos que fecharam e ainda não foram premiados (no app real, uma rotina do servidor). */
+export function premiarRanking() {
+  const d0 = ler();
+  const fechados = (Object.keys(PERIODOS) as Periodo[]).map((p) => ({ p, per: periodoAnterior(p) })).filter(({ per }) => !d0.premiacoes.includes(per.chave));
+  if (!fechados.length) return;
+  mudar((d) => {
+    for (const { p, per } of fechados) {
+      d.premiacoes.push(per.chave);
+      for (const tipo of ['pessoas', 'comercios'] as const) {
+        ranking(d, tipo, p, per.ini).slice(0, 3).forEach((x, i) => {
+          if (x.ficticio || !x.pontos || !d.usuarios[x.id]) return;
+          const v = PREMIOS_RANKING[p][i];
+          const c = carteiraDe(d, x.id);
+          c.saldo += v; c.hist.unshift({ t: Date.now(), txt: `Prêmio do ranking: ${i + 1}º lugar (${PERIODOS[p].toLowerCase()})`, v, k: 'premio' });
+          d.carteiras[x.id] = c;
+          notificar(d, x.id, `Você ficou em ${i + 1}º no ranking ${p === 'semana' ? 'da semana' : p === 'mes' ? 'do mês' : 'do ano'} e ganhou ${v} celus!`, '/ranking');
+        });
+      }
+    }
+  });
+}
+
+/* ---------- Loteria do Mar ---------- */
+/** Estado do prêmio. Na primeira vez, começa com o prêmio inicial e três concursos passados sem apostas, para já ter resultados. */
+export function estadoLoteria(d: Pick<DB, 'loteria'>): EstadoLoteria {
+  if (d.loteria) return d.loteria;
+  const passados = concursosEntre(diaLocal(Date.now() - 14 * DIA), diaLocal(Date.now())).filter((x) => quandoConcurso(x) + LOT_SHOW_S * 1000 <= Date.now());
+  return { acumulado: LOT_INICIAL - LOT_APORTE * 3, ultimoApurado: passados[passados.length - 4] ?? passados[0] ?? diaLocal(Date.now() - 7 * DIA), concursos: [] };
+}
+/** Prêmio principal previsto para o próximo concurso: acumulado + aporte da Celus + 70% dos bilhetes já feitos. */
+export function premioPrevisto(d: Pick<DB, 'loteria' | 'bilhetes'>, dia: string): number {
+  const arrecadado = d.bilhetes.filter((b) => b.dia === dia).reduce((s, b) => s + b.valor, 0);
+  return estadoLoteria(d).acumulado + LOT_APORTE + Math.floor(arrecadado * LOT_PARA_PREMIO);
+}
+
+/** Faz um bilhete: 3 elementos diferentes, 10 celus, para o próximo concurso. */
+export function apostar(escolha: string[]): Resultado {
+  const e = precisaVerificado(); if (e) return falha(e);
+  const uid = sessao()!;
+  const ids = [...new Set(escolha)];
+  if (ids.length !== LOT_ESCOLHE || ids.some((x) => !ELEMENTOS_MAR.some((m) => m.id === x))) return falha(`Escolha ${LOT_ESCOLHE} elementos diferentes.`);
+  const d0 = ler(); const { dia } = proximoConcurso(Date.now(), estadoLoteria(d0).ultimoApurado);
+  const meus = d0.bilhetes.filter((x) => x.userId === uid && x.dia === dia);
+  if (meus.length >= LOT_POR_CONCURSO) return falha(`Até ${LOT_POR_CONCURSO} bilhetes por concurso.`);
+  const chave = [...ids].sort().join();
+  if (meus.some((x) => [...x.escolha].sort().join() === chave)) return falha('Você já jogou essa combinação neste concurso.');
+  if (carteiraDe(d0, uid).saldo < LOT_BILHETE) return falha('Saldo de celus insuficiente.');
+  mudar((d) => {
+    const c = carteiraDe(d, uid);
+    c.saldo -= LOT_BILHETE; c.hist.unshift({ t: Date.now(), txt: `Bilhete da ${NOME_LOTERIA}: ${ids.map((x) => elementoMar(x).nome).join(', ')}`, v: -LOT_BILHETE, k: 'loteria' });
+    d.carteiras[uid] = c;
+    d.loteria = estadoLoteria(d);
+    d.bilhetes.unshift({ id: novoId(), userId: uid, dia, escolha: ids, valor: LOT_BILHETE, t: Date.now(), status: 'aguardando' });
+  });
+  return { ok: true };
+}
+
+/**
+ * Apura os concursos cuja apresentação ao vivo já terminou (no app real, uma rotina do servidor).
+ * Sem ganhador de 3 acertos, o prêmio acumula. `adiantar` (só teste) apura o próximo concurso agora.
+ */
+export function apurarLoteria(adiantar = false) {
+  const d0 = ler(); const est = estadoLoteria(d0);
+  const agora = Date.now();
+  const dias = concursosEntre(est.ultimoApurado, diaLocal(agora + 7 * DIA)).filter((x) => quandoConcurso(x) + LOT_SHOW_S * 1000 <= agora);
+  if (adiantar) dias.push(proximoConcurso(agora, est.ultimoApurado).dia);
+  if (!dias.length && d0.loteria) return;
+  mudar((d) => {
+    const e = estadoLoteria(d);
+    for (const dia of dias) {
+      if (dia <= e.ultimoApurado) continue;
+      const saiu = resultadoConcurso(dia);
+      const bs = d.bilhetes.filter((b) => b.dia === dia && b.status === 'aguardando');
+      const premioTotal = e.acumulado + LOT_APORTE + Math.floor(bs.reduce((s, b) => s + b.valor, 0) * LOT_PARA_PREMIO);
+      bs.forEach((b) => { b.acertos = acertos(b.escolha, saiu); });
+      const g3 = bs.filter((b) => b.acertos === 3), g2 = bs.filter((b) => b.acertos === 2);
+      const premio3 = g3.length ? Math.floor(premioTotal / g3.length) : 0;
+      const pagar = (b: typeof bs[number], v: number, txt: string) => {
+        b.status = 'ganhou'; b.premio = v;
+        const c = carteiraDe(d, b.userId); c.saldo += v; c.hist.unshift({ t: Date.now(), txt, v, k: 'loteria' }); d.carteiras[b.userId] = c;
+      };
+      g3.forEach((b) => { pagar(b, premio3, `${NOME_LOTERIA}: acertou os 3!`); notificar(d, b.userId, `Você acertou os 3 na ${NOME_LOTERIA} e ganhou ${premio3} celus!`, '/loteria'); });
+      g2.forEach((b) => { pagar(b, LOT_PREMIO_2, `${NOME_LOTERIA}: 2 acertos`); });
+      bs.forEach((b) => { if (b.status === 'aguardando') b.status = 'perdeu'; });
+      for (const uid of new Set(bs.map((b) => b.userId))) if (!g3.some((b) => b.userId === uid)) {
+        const ganhou2 = g2.filter((b) => b.userId === uid).length;
+        notificar(d, uid, `Saiu ${saiu.map((x) => elementoMar(x).nome).join(', ')} na ${NOME_LOTERIA}. ${ganhou2 ? `Você fez 2 acertos e ganhou ${ganhou2 * LOT_PREMIO_2} celus.` : 'Não foi dessa vez.'}${g3.length ? '' : ' O prêmio acumulou!'}`, '/loteria');
+      }
+      e.acumulado = g3.length ? LOT_INICIAL - LOT_APORTE : premioTotal;
+      e.ultimoApurado = dia;
+      e.concursos.unshift({ dia, saiu, bilhetes: bs.length, premioTotal, ganhadores3: g3.length, premio3, ganhadores2: g2.length, acumulou: !g3.length });
+      e.concursos.length = Math.min(e.concursos.length, 30);
+    }
+    d.loteria = e;
+  });
 }

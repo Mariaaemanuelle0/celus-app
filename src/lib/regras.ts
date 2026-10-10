@@ -137,6 +137,7 @@ export type Ganho = { chave: string; txt: string; v: number; limite?: number; un
 export const GANHOS: Ganho[] = [
   { chave: 'boasvindas', txt: 'Criar a conta', v: 100, unico: true },
   { chave: 'perfil', txt: 'Completar o perfil (selfie, identidade verificada e bio)', v: 50, unico: true },
+  { chave: 'adesao', txt: 'Ter seu comércio, espaço ou academia aprovado na Celus', v: 100, unico: true },
   { chave: 'feira', txt: 'Anunciar um item na Feira do Polvo', v: 5, limite: 3 },
   { chave: 'semaforo', txt: 'Marcar a sensação de segurança no mapa', v: 2, limite: 5 },
   { chave: 'reserva', txt: 'Usar espaços e serviços, a cada R$ 10', v: 1 },
@@ -180,3 +181,91 @@ export function chaveSemana(t = Date.now()): string {
   return diaLocal(d.getTime());
 }
 export const diaLocal = (t: number) => new Date(t).toLocaleDateString('sv-SE');
+
+/* ---------- Ranking ---------- */
+export type Periodo = 'semana' | 'mes' | 'ano';
+export const PERIODOS: Record<Periodo, string> = { semana: 'Semana', mes: 'Mês', ano: 'Ano' };
+/** Prêmio em celus para o 1º, 2º e 3º lugar de cada ranking (pessoas e comércios), pago pela Celus quando o período fecha. Proposta. */
+export const PREMIOS_RANKING: Record<Periodo, [number, number, number]> = { semana: [50, 30, 20], mes: [200, 100, 50], ano: [1000, 500, 250] };
+
+/** Início do período que contém t, e início do seguinte. */
+export function periodoDe(p: Periodo, t = Date.now()): { ini: number; fim: number; chave: string } {
+  const d = new Date(t); d.setHours(0, 0, 0, 0);
+  if (p === 'semana') d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  if (p === 'mes') d.setDate(1);
+  if (p === 'ano') d.setMonth(0, 1);
+  const ini = d.getTime();
+  const f = new Date(d);
+  if (p === 'semana') f.setDate(f.getDate() + 7);
+  if (p === 'mes') f.setMonth(f.getMonth() + 1);
+  if (p === 'ano') f.setFullYear(f.getFullYear() + 1);
+  return { ini, fim: f.getTime(), chave: `${p}:${diaLocal(ini)}` };
+}
+/** O período que acabou de fechar (o da coroação). */
+export const periodoAnterior = (p: Periodo, t = Date.now()) => periodoDe(p, periodoDe(p, t).ini - 1);
+
+/* ---------- Loteria do Mar (como a Mega-Sena, com elementos do mar) ---------- */
+export const NOME_LOTERIA = 'Loteria do Mar';
+export const ELEMENTOS_MAR = [
+  { id: 'polvo', nome: 'Polvo', e: '🐙' }, { id: 'tubarao', nome: 'Tubarão', e: '🦈' }, { id: 'golfinho', nome: 'Golfinho', e: '🐬' },
+  { id: 'baleia', nome: 'Baleia', e: '🐋' }, { id: 'jubarte', nome: 'Jubarte', e: '🐳' }, { id: 'tartaruga', nome: 'Tartaruga', e: '🐢' },
+  { id: 'caranguejo', nome: 'Caranguejo', e: '🦀' }, { id: 'lula', nome: 'Lula', e: '🦑' }, { id: 'palhaco', nome: 'Peixe-palhaço', e: '🐠' },
+  { id: 'sardinha', nome: 'Sardinha', e: '🐟' }, { id: 'baiacu', nome: 'Baiacu', e: '🐡' }, { id: 'lagosta', nome: 'Lagosta', e: '🦞' },
+  { id: 'foca', nome: 'Foca', e: '🦭' }, { id: 'camarao', nome: 'Camarão', e: '🦐' }, { id: 'ostra', nome: 'Ostra', e: '🦪' },
+  { id: 'concha', nome: 'Concha', e: '🐚' }, { id: 'pinguim', nome: 'Pinguim', e: '🐧' }, { id: 'lontra', nome: 'Lontra', e: '🦦' },
+  { id: 'sereia', nome: 'Sereia', e: '🧜‍♀️' }, { id: 'ancora', nome: 'Âncora', e: '⚓' }, { id: 'onda', nome: 'Onda', e: '🌊' },
+  { id: 'veleiro', nome: 'Veleiro', e: '⛵' }, { id: 'navio', nome: 'Navio', e: '🚢' }, { id: 'ilha', nome: 'Ilha', e: '🏝️' },
+  { id: 'coqueiro', nome: 'Coqueiro', e: '🌴' }, { id: 'tridente', nome: 'Tridente', e: '🔱' }, { id: 'bussola', nome: 'Bússola', e: '🧭' },
+  { id: 'redemoinho', nome: 'Redemoinho', e: '🌀' }, { id: 'surfista', nome: 'Surfista', e: '🏄' }, { id: 'lua', nome: 'Lua cheia', e: '🌕' },
+] as const;
+export const elementoMar = (id: string) => ELEMENTOS_MAR.find((x) => x.id === id) ?? ELEMENTOS_MAR[0];
+/** Escolhe 3, saem 3. Prêmio principal para quem acerta os 3 (1 em 4.060). */
+export const LOT_ESCOLHE = 3;
+/** Terça, quinta e sábado às 20 h. As apostas fecham 5 minutos antes. */
+export const LOT_DIAS = [2, 4, 6];
+export const LOT_HORA = 20;
+export const LOT_FECHA_MIN = 5;
+/** Duração da apresentação ao vivo e o segundo em que cada elemento sai. */
+export const LOT_SHOW_S = 60;
+export const LOT_REVELA_S = [12, 28, 44];
+export const LOT_BILHETE = 10;
+export const LOT_POR_CONCURSO = 5;
+/** Parte de cada bilhete que vai para o prêmio principal; o resto fica com a Celus. */
+export const LOT_PARA_PREMIO = 0.7;
+/** Prêmio inicial de um ciclo e quanto a Celus coloca em todo concurso. */
+export const LOT_INICIAL = 1000;
+export const LOT_APORTE = 200;
+/** Quem acerta 2 recebe um valor fixo, pago pela Celus. */
+export const LOT_PREMIO_2 = 20;
+
+const diaDe = (t: number) => diaLocal(t);
+export const quandoConcurso = (dia: string) => { const [a, m, d] = dia.split('-').map(Number); return new Date(a, m - 1, d, LOT_HORA).getTime(); };
+export const fechaConcurso = (dia: string) => quandoConcurso(dia) - LOT_FECHA_MIN * 60_000;
+
+/** Próximo concurso que ainda aceita apostas (pula os já apurados, como num sorteio adiantado no teste). */
+export function proximoConcurso(t = Date.now(), ultimoApurado = ''): { dia: string; quando: number; fecha: number } {
+  const d = new Date(t); d.setHours(12, 0, 0, 0);
+  for (let i = 0; i < 14; i++, d.setDate(d.getDate() + 1)) {
+    const dia = diaDe(d.getTime());
+    if (LOT_DIAS.includes(d.getDay()) && fechaConcurso(dia) > t && dia > ultimoApurado) return { dia, quando: quandoConcurso(dia), fecha: fechaConcurso(dia) };
+  }
+  throw new Error('sem concurso');
+}
+/** Concursos (dias) entre dois dias, exclusivo no início e inclusivo no fim. */
+export function concursosEntre(depois: string, ate: string): string[] {
+  const [a, m, dd] = depois.split('-').map(Number); const d = new Date(a, m - 1, dd, 12); const r: string[] = [];
+  for (d.setDate(d.getDate() + 1); diaDe(d.getTime()) <= ate; d.setDate(d.getDate() + 1)) if (LOT_DIAS.includes(d.getDay())) r.push(diaDe(d.getTime()));
+  return r;
+}
+/** Número do concurso, contado desde o primeiro de 2026. */
+export const numeroConcurso = (dia: string) => concursosEntre('2025-12-31', dia).length;
+/** Os 3 elementos que saem num concurso. No modo demonstração saem de uma conta fixa; no app real, o servidor sorteia e transmite. */
+export function resultadoConcurso(dia: string): string[] {
+  const saiu: string[] = [];
+  for (let k = 0; saiu.length < LOT_ESCOLHE; k++) {
+    const e = ELEMENTOS_MAR[Number(codigoQR('loteria-do-mar:' + dia, k)) % ELEMENTOS_MAR.length].id;
+    if (!saiu.includes(e)) saiu.push(e);
+  }
+  return saiu;
+}
+export const acertos = (escolha: string[], saiu: string[]) => escolha.filter((x) => saiu.includes(x)).length;

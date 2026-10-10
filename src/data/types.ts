@@ -163,7 +163,13 @@ export type MensagemChat = { id: string; quad: string; autorId: string; autorNom
 
 export type MarcaSemaforo = { cell: string; slot: string; nivel: 1 | 2 | 3; t: number; userId: string };
 
-export type Lancamento = { t: number; txt: string; v: number };
+/** k = de onde veio (chave do ganho, 'premio' do ranking, 'loteria'). Só ganhos contam no ranking. */
+export type Lancamento = { t: number; txt: string; v: number; k?: string };
+/** Bilhete da Loteria do Mar: 3 elementos para o concurso de um dia. */
+export type Bilhete = { id: string; userId: string; dia: string; escolha: string[]; valor: number; t: number; status: 'aguardando' | 'ganhou' | 'perdeu'; acertos?: number; premio?: number };
+/** Resultado de um concurso. premio3 é o valor para cada ganhador do principal. */
+export type Concurso = { dia: string; saiu: string[]; bilhetes: number; premioTotal: number; ganhadores3: number; premio3: number; ganhadores2: number; acumulou: boolean };
+export type EstadoLoteria = { acumulado: number; ultimoApurado: string; concursos: Concurso[] };
 export type Vale = { nome: string; onde: string; codigo: string; t: number };
 export type Carteira = { saldo: number; hist: Lancamento[]; hoje: { dia: string; contagem: Record<string, number> }; vales: Vale[]; /** Celus guardados (caução de encontro, troca em andamento): ainda são da pessoa, mas não dá para usar. */ reservado?: number };
 
@@ -189,7 +195,7 @@ export type Encontro = {
   id: string; comunidadeId: string; organizadorId: string; titulo: string; descricao: string; local: string;
   inicio: number; fim: number; vagas: number; caucao: number; prazoCancelH: number; presencas: Presenca[]; encerrado?: boolean;
 };
-/** Troca: item que ia para o lixo ou não tem mais uso, trocado por celus (ou doado, com preço zero). */
+/** Troca: item que ia para o lixo ou não tem mais uso, trocado por celus (sem doação, mínimo 5 celus). */
 export type Troca = {
   id: string; donoId: string; titulo: string; descricao: string; estado: 'novo' | 'usado'; preco: number; fotos: string[];
   lat: number; lng: number; bairro: string; criadoEm: number;

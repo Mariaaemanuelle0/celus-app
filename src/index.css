@@ -528,3 +528,68 @@ a.chip { text-decoration: none; }
 .qr svg { width: 100%; height: 100%; display: block; }
 .qr-cod { font-size: 30px; letter-spacing: .12em; }
 .parceiro { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Ranking ---------- */
+.rank-cor { color: #F5C451; background: rgba(245,196,81,.1); border-color: rgba(245,196,81,.3); }
+.rk-voce { margin-top: 14px; }
+.rk-coroa { padding: 18px 10px 12px; background: linear-gradient(180deg, rgba(245,196,81,.07), var(--surface) 70%); }
+.podio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: end; }
+.podio-lugar { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; position: relative; }
+.podio-lugar.p1 .avatar { width: 56px; height: 56px; border-radius: 18px; box-shadow: 0 0 0 2px #F5C451; }
+.podio-nome { font-size: 13.5px; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coroa { color: #F5C451; width: 26px; height: 26px; margin-bottom: -4px; }
+.podio-degrau { width: 100%; display: grid; place-items: center; border-radius: 10px 10px 0 0; background: var(--surface-2); border: 1px solid var(--line); font-size: 18px; color: var(--text-2); margin-top: 4px; }
+.p1 .podio-degrau { height: 64px; background: linear-gradient(180deg, rgba(245,196,81,.28), rgba(245,196,81,.06)); color: #F5C451; border-color: rgba(245,196,81,.35); }
+.p2 .podio-degrau { height: 46px; }
+.p3 .podio-degrau { height: 34px; }
+.podio-premio { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--accent-2); }
+.aovivo { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 4px rgba(255,107,107,.18); vertical-align: middle; margin-right: 4px; animation: pisca 1.6s infinite; }
+@keyframes pisca { 50% { opacity: .35; } }
+.rk-lista { margin-top: 10px; padding: 4px 10px; }
+.rk-linha { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.rk-linha:last-child { border-bottom: 0; }
+.rk-linha .sp { display: flex; flex-direction: column; }
+.rk-linha.voce { background: var(--accent-soft); border-radius: 12px; border-bottom-color: transparent; padding-left: 8px; padding-right: 8px; }
+.rk-pos { width: 24px; text-align: center; color: var(--muted); font-size: 14px; flex: none; }
+.rk-nome { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-pts { color: var(--accent-2); font-size: 15px; }
+.rk-reti { text-align: center; color: var(--muted); letter-spacing: 4px; padding: 2px 0; }
+
+/* ---------- Loteria do Mar ---------- */
+.lot-cor { color: var(--cyan); background: rgba(94,211,232,.1); border-color: rgba(94,211,232,.28); }
+.lot-relogio { font-size: inherit; letter-spacing: -.02em; color: var(--text); }
+.lot-aovivo-faixa { display: flex; align-items: center; gap: 8px; padding: 12px 14px; margin-bottom: 12px; border-radius: var(--r-sm); background: rgba(255,107,107,.1); border: 1px solid rgba(255,107,107,.35); color: var(--text); font-weight: 600; text-decoration: none; }
+.lot-premio { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 16px; text-align: center; border-radius: var(--r); border: 1px solid rgba(94,211,232,.3); background: radial-gradient(120% 90% at 50% 0%, rgba(94,211,232,.16), var(--surface) 70%); }
+.lot-premio-valor { display: inline-flex; align-items: center; gap: 8px; }
+.lot-premio-valor b { font-size: 40px; font-weight: 500; letter-spacing: -.03em; }
+.lot-acumulou { font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--bg); background: var(--cyan); padding: 4px 12px; border-radius: 999px; letter-spacing: .02em; }
+.lot-grade { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.lot-bicho { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface); color: var(--text-2); min-width: 0; }
+.lot-bicho[aria-pressed="true"] { border-color: var(--cyan); background: rgba(94,211,232,.14); color: var(--text); box-shadow: 0 0 0 1px var(--cyan); }
+.lot-e { font-size: 26px; line-height: 1.1; }
+.lot-nome { font-size: 10.5px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lot-jogar { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.lot-jogar-info { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.lot-trio { display: inline-flex; gap: 6px; }
+.lot-mini { width: 34px; height: 34px; display: grid; place-items: center; font-size: 20px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.lot-mini.acerto { border-color: var(--ok); background: rgba(61,214,140,.14); box-shadow: 0 0 0 1px var(--ok); }
+.lot-bilhete { align-items: center; }
+.lot-bilhete .hint { font-family: var(--body); letter-spacing: 0; }
+.lot-bilhete .status { white-space: nowrap; flex: none; }
+.lot-concurso { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; color: var(--text); text-decoration: none; }
+.lot-live { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--bad); text-transform: uppercase; letter-spacing: .06em; }
+.lot-palco { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px 14px; border-radius: var(--r); border: 1px solid rgba(94,211,232,.3); background: radial-gradient(100% 80% at 50% 10%, rgba(94,211,232,.14), var(--surface) 75%); text-align: center; }
+.lot-palco .lot-relogio { font-size: 34px; }
+.lot-globo { width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; font-size: 52px; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.18), rgba(94,211,232,.12) 45%, rgba(14,34,80,.6)); border: 1px solid rgba(94,211,232,.4); box-shadow: inset 0 -10px 30px rgba(0,0,0,.4), 0 0 40px rgba(94,211,232,.15); }
+.lot-globo .gira { display: inline-block; animation: balanca .22s ease-in-out infinite alternate; }
+@keyframes balanca { from { transform: translateY(-3px) rotate(-8deg); } to { transform: translateY(3px) rotate(8deg); } }
+.lot-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.lot-slot { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 18px; border: 1px dashed var(--line-2); background: var(--bg-2); }
+.lot-slot.saiu { border: 1px solid var(--cyan); background: rgba(94,211,232,.12); animation: surge .5s ease-out; }
+.lot-slot .lot-e { font-size: 40px; }
+.lot-slot .lot-nome { font-size: 12.5px; }
+@keyframes surge { from { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.08); } to { transform: scale(1); opacity: 1; } }
+.lot-acertos { font-size: 13px; color: var(--ok); margin-left: 6px; }
+.lot-final { margin-top: 16px; padding: 16px; display: flex; flex-direction: column; gap: 4px; border-color: rgba(94,211,232,.35); }
+.lot-final.saiu { border-color: rgba(61,214,140,.45); background: rgba(61,214,140,.06); }
+@media (prefers-reduced-motion: reduce) { .lot-globo .gira, .lot-slot.saiu, .aovivo { animation: none; } }

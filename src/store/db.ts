@@ -2,7 +2,7 @@
 // Quando o Supabase for ligado, estas ações passam a chamar o servidor; as telas não mudam.
 import { useSyncExternalStore } from 'react';
 import type {
-  Anuncio, Avaliacao, Beneficio, Carteira, CheckinSaude, Comunidade, Denuncia, LocalSaude, Encontro, Troca, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
+  Anuncio, Avaliacao, Beneficio, Bilhete, Carteira, EstadoLoteria, CheckinSaude, Comunidade, Denuncia, LocalSaude, Encontro, Troca, MarcaSemaforo, MensagemChat, Notificacao, Reserva, Story, Suporte, Usuario,
 } from '../data/types';
 import { anunciosFicticios, sementesComunidade, sementesSaude } from '../data/seed';
 import { centroPiloto } from '../lib/geo';
@@ -32,6 +32,11 @@ export type DB = {
   trocas: Troca[];
   locaisSaude: LocalSaude[];
   checkinsSaude: CheckinSaude[];
+  bilhetes: Bilhete[];
+  /** Prêmio acumulado e concursos já apurados (no app real, fica no servidor). */
+  loteria?: EstadoLoteria;
+  /** Rankings já premiados (ex.: 'semana:2026-10-05'). */
+  premiacoes: string[];
 };
 
 const CHAVE = 'celus-db-v1';
@@ -52,7 +57,7 @@ function inicial(): DB {
       st('s6', 'Nina P.', 15, 'Pão de queijo e Wi-Fi bom. Rendeu a tarde.'),
       st('s3', 'Carol M.', 140, 'Cochilo depois do almoço.'),
     ],
-    checkins: [], curtidas: [], chat: [], semaforo: [], carteiras: {}, locaisSaude: sementesSaude(), checkinsSaude: [],
+    checkins: [], curtidas: [], chat: [], semaforo: [], carteiras: {}, locaisSaude: sementesSaude(), checkinsSaude: [], bilhetes: [], premiacoes: [],
     beneficios: [
       { id: 'b-ext30', grupo: 'celus', nome: '30 minutos extras grátis', desc: 'Em qualquer reserva por hora.', custo: 150 },
       { id: 'b-camp', grupo: 'celus', nome: 'Campanha Celus do mês', desc: 'Cupons e sorteios da campanha em andamento.', custo: 80 },
@@ -84,6 +89,14 @@ function carregar(): DB {
         if (!db.comunidades) Object.assign(db, sementesComunidade());
         db.locaisSaude ??= sementesSaude();
         db.checkinsSaude ??= [];
+        db.bilhetes ??= [];
+        // Bilhetes do formato antigo (um bicho só): devolve os que ainda aguardavam e tira da lista.
+        db.bilhetes = db.bilhetes.filter((b) => {
+          if (Array.isArray(b.escolha)) return true;
+          if (b.status === 'aguardando' && db.carteiras[b.userId]) { db.carteiras[b.userId].saldo += b.valor; db.carteiras[b.userId].hist.unshift({ t: Date.now(), txt: 'Devolvido: bilhete da loteria antiga', v: b.valor, k: 'loteria' }); }
+          return false;
+        });
+        db.premiacoes ??= [];
         db.trocas?.forEach((t) => { if (t.preco < 5 && t.status === 'disponivel') t.preco = t.id === 't2' ? 30 : 5; });
         for (const a of anunciosFicticios()) if (!db.anuncios.some((x) => x.id === a.id)) db.anuncios.push(a);
         return db;
@@ -149,7 +162,7 @@ export function ganhar(d: DB, userId: string, chave: string, txt: string, vezes 
   c.hoje.contagem[chave] = ja + permitido;
   const v = regra.v * permitido;
   c.saldo += v;
-  c.hist.unshift({ t: Date.now(), txt, v });
+  c.hist.unshift({ t: Date.now(), txt, v, k: chave });
   d.carteiras[userId] = c;
   return v;
 }

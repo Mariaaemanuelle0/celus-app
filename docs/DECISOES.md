@@ -97,10 +97,10 @@ Decisões tomadas com a fundadora, Emanuelle Macedo. Prevalecem sobre o pacote o
 
 ## Celus (moeda)
 - Pontos: não se compra com dinheiro e não se saca. Referência de valor: **1 celus = R$ 1** (parâmetro mostrado na carteira, não é conversão).
-- Passam de uma pessoa para outra só em dois casos, sempre guardados (reservados) antes: caução de encontro (vai para quem organiza se a pessoa faltar) e troca no Feira do Polvo (vai para quem entrega, depois do código conferido).
-- Ganha (lançamento): criar a conta +100 (uma vez); perfil completo com selfie, identidade verificada e bio +50 (uma vez); anunciar item na Feira do Polvo +5 (até 3/dia); marcar a sensação de segurança no mapa +2 (até 5/dia); usar espaços e serviços +1 a cada R$ 10; treinar num parceiro de saúde +5 (1/dia), 3 treinos na semana +15, 12 no mês +40; ir a um evento com ingresso conferido +10 (até 3/dia); ir a encontro de comunidade +5 (até 3/dia); organizar evento ou encontro +2 por pessoa presente (até 50/dia); avaliar um lugar +10 (até 5/dia); ser avaliado com 5 estrelas +20, com 4 +10; manter nota 4,5 ou mais com 3 avaliações ou mais +30 por mês; story +5 (até 3/dia); curtida recebida +1 (até 20/dia, uma por pessoa e post no dia).
+- Passam de uma pessoa para outra só em três casos: caução de encontro (vai para quem organiza se a pessoa faltar) e troca no Feira do Polvo (vai para quem entrega, depois do código conferido), sempre guardados antes; e o prêmio da Loteria do Mar, formado pelos bilhetes.
+- Ganha (lançamento): criar a conta +100 (uma vez); perfil completo com selfie, identidade verificada e bio +50 (uma vez); comércio, espaço ou academia aprovado pela curadoria +100 (uma vez por conta, chamado de bônus de adesão); anunciar item na Feira do Polvo +5 (até 3/dia); marcar a sensação de segurança no mapa +2 (até 5/dia); usar espaços e serviços +1 a cada R$ 10; treinar num parceiro de saúde +5 (1/dia), 3 treinos na semana +15, 12 no mês +40; ir a um evento com ingresso conferido +10 (até 3/dia); ir a encontro de comunidade +5 (até 3/dia); organizar evento ou encontro +2 por pessoa presente (até 50/dia); avaliar um lugar +10 (até 5/dia); ser avaliado com 5 estrelas +20, com 4 +10; manter nota 4,5 ou mais com 3 avaliações ou mais +30 por mês; story +5 (até 3/dia); curtida recebida +1 (até 20/dia, uma por pessoa e post no dia).
 - Organizador só ganha por gente que realmente foi (código conferido), nunca por criar o evento: evita evento falso para gerar celus.
-- Usa: brindes e descontos oferecidos pelos próprios locais, eventos Celus (ex.: ingresso 100 celus, bola na praia 20 celus/hora), campanhas, e para anfitriões: destaque pago, campanha do mês, comissão 2 pontos menor por 30 dias (máx. 1x/mês).
+- Usa: Loteria do Mar (ver abaixo), brindes e descontos oferecidos pelos próprios locais, eventos Celus (ex.: ingresso 100 celus, bola na praia 20 celus/hora), campanhas, e para anfitriões: destaque pago, campanha do mês, comissão 2 pontos menor por 30 dias (máx. 1x/mês).
 - Parceiros externos (games etc.) só depois de validação jurídica, e oferecendo benefícios, não aceitando celus como pagamento.
 
 ## Receita
@@ -155,6 +155,8 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - Imóveis: sem comissão sobre venda; corretagem com o sócio que tem CRECI.
 - Ingressos: regras de meia-entrada e cota obrigatória (lei federal), direito de arrependimento em compra online, responsabilidade do organizador por alvarás, segurança, capacidade e proibição de menores; taxa de serviço destacada no preço.
 - Camping: anfitrião declara que o imóvel e o condomínio permitem a atividade.
+- Ranking: todas as pessoas aparecem, sem opção de sair (decisão da fundadora), com primeiro nome, inicial do sobrenome e foto. Validar com o advogado à luz da LGPD (base legal, transparência nos termos).
+- Loteria do Mar: validar o enquadramento antes de abrir ao público (Lei de Contravenções Penais, regras de sorteios e apostas, autorização de sorteios). Mesmo com celus como dinheiro fantasia, celus têm referência de valor e são ganhos com consumo pago.
 - LGPD: dados de documento, selfie, localização e fotos (finalidade, guarda e exclusão). Frequência em parceiros de saúde: tratar com cuidado (pode revelar rotina e, junto com o tipo de local, informação de saúde); nunca pública, nunca compartilhada com o parceiro além da contagem.
 - Parceiros de saúde: termo de parceria (QR na recepção, proibido check-in sem treino real, a Celus pode pausar o local em caso de fraude).
 
@@ -181,10 +183,29 @@ Lista que cresce conforme decidimos. Serve de base para os termos de uso, a pol�
 - No lançamento, a Celus banca esses celus como marketing. Depois, o modelo é o parceiro comprar pacotes de celus para dar aos alunos (modelo de coalizão, ver "Ideias para depois").
 - No app de demonstração o código do QR é gerado no próprio aparelho. Com o servidor (Supabase), o código passa a ser gerado e conferido no servidor.
 
+## Ranking (decidido em outubro de 2026)
+- Dois rankings: **pessoas** e **comércios** (conta que tem anúncio ou parceiro de saúde aprovado; aparece com o nome do local).
+- Conta celus **ganhos** no período: não entram prêmios do ranking, loteria, devoluções, nem celus recebidos em trocas e cauções.
+- Placar ao vivo. No fim de cada **semana, mês e ano** o pódio é coroado (tela "Campeões") e o 1º, 2º e 3º ganham celus pagos pela Celus: semana 50/30/20, mês 200/100/50, ano 1000/500/250 (proposta).
+- Todas as pessoas aparecem, sem opção de sair.
+- Modo demonstração: participantes fictícios para o ranking não começar vazio.
+
+## Loteria do Mar (decidido em outubro de 2026)
+- Sistema próprio, no estilo da Mega-Sena, com **30 elementos do mar** (bichos como polvo, tubarão e tartaruga, e elementos como âncora, onda, veleiro e sereia).
+- A pessoa escolhe **3**; saem 3. Acertou os 3, leva o prêmio principal (chance de 1 em 4.060). Precisa ser difícil, para ninguém "cobrir" o jogo.
+- Sorteio **ao vivo pela plataforma** na terça, quinta e sábado, às 20 h: os 3 elementos saem um a um na tela, e cada pessoa vê os acertos dos seus bilhetes na hora. Apostas fecham às 19h55.
+- Bilhete de 10 celus, até 5 por concurso, sem repetir combinação. Só maiores de 18 com identidade verificada.
+- Prêmio principal: 70% dos bilhetes + 200 celus que a Celus coloca em todo concurso; começa em 1.000 celus. **Ninguém acertou, acumula.** Mais de um ganhador, divide. 2 acertos: 20 celus fixos, pagos pela Celus. (Valores são proposta.)
+- Os celus dos bilhetes formam o prêmio de quem ganha: é um terceiro caso de celus passando entre pessoas (além de caução e Feira do Polvo). Ganhos na loteria não contam no ranking.
+- Só celus, como dinheiro fantasia. Nunca dinheiro de verdade.
+- No modo demonstração o resultado sai de uma conta fixa no aparelho. Com o servidor, o sorteio é feito e transmitido pelo servidor, igual para todos.
+- Nome provisório; validar com o advogado antes de abrir ao público (ver pontos para os termos).
+
 ## Ideias em discussão
 - **Currículo de freelancer:** histórico de trabalhos e estrelas visível só para quem está contratando; locais também ganham nota de "bom para trabalhar como freelancer". Próxima etapa.
 
 ## Ideias para depois (registradas, não construir agora)
+- **Desafios e circuitos no mapa:** percursos de corrida desenhados no mapa; quem faz o melhor tempo ganha celus (conferência por GPS, ranking do circuito).
 - **Plataforma de pontos própria, no modelo de coalizão (referência citada pela fundadora: Stix).** Uma plataforma só para os celus, separada do app: empresas compram pacotes de celus para dar aos clientes (lojas físicas e também comércios digitais), as pessoas acumulam em vários parceiros e trocam num catálogo de produtos, como um "Mercado Livre de pontos".
   - Primeiro passo possível dentro do app: "locais geram celus" com modo Caixa para o lojista, venda de pacotes e validade dos pontos.
   - Transferência livre entre pessoas (fora de caução e trocas) segue fora até validação jurídica; se liberada, no formato "presentear" com limite mensal e só entre contas verificadas.

@@ -34,6 +34,9 @@ const Pessoa = sob(() => import('./pages/Pessoa'), 'Pessoa');
 const SaudePage = sob(() => import('./pages/Saude'), 'SaudePage');
 const CheckinTreino = sob(() => import('./pages/Saude'), 'CheckinTreino');
 const PainelSaude = sob(() => import('./pages/Saude'), 'PainelSaude');
+const RankingPage = sob(() => import('./pages/Ranking'), 'RankingPage');
+const LoteriaPage = sob(() => import('./pages/Loteria'), 'LoteriaPage');
+const SorteioAoVivo = sob(() => import('./pages/Loteria'), 'SorteioAoVivo');
 import { useUsuario } from './store/db';
 
 function SoDeslogado({ children }: { children: React.ReactNode }) {
@@ -63,6 +66,9 @@ export default function App() {
           <Route path="pessoa/:id" element={<Pessoa />} />
           <Route path="saude" element={<SaudePage />} />
           <Route path="saude/checkin" element={<CheckinTreino />} />
+          <Route path="ranking" element={<RankingPage />} />
+          <Route path="loteria" element={<LoteriaPage />} />
+          <Route path="loteria/ao-vivo" element={<SorteioAoVivo />} />
           <Route path="renda/saude" element={<PainelSaude />} />
           <Route path="perfil" element={<PerfilPage />} />
           <Route path="perfil/editar" element={<EditarPerfil />} />

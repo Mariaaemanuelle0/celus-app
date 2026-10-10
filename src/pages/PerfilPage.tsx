@@ -8,7 +8,7 @@ import { brl } from '../lib/format';
 import { idade } from '../lib/regras';
 import { alternarAlbum, alternarEquipe, alternarPrivacidade, atualizarPerfil, excluirConta, resgatar, resgatarAnfitriao, sair, storiesVisiveis } from '../store/acoes';
 import { apagarTudo, carteiraDe, useDB, useUsuario } from '../store/db';
-import { CELUS_EM_REAIS, GANHOS } from '../lib/regras';
+import { CELUS_EM_REAIS, GANHOS, NOME_LOTERIA } from '../lib/regras';
 import { NOME_TROCAS, useBlocosPerfil } from '../lib/perfil';
 import { CartaoSaude } from './Saude';
 
@@ -68,6 +68,14 @@ export function PerfilPage() {
         <Link to="/trocas" className="box entrada">
           <span className="entrada-ic feira-cor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9l1.5-5h13L20 9" /><path d="M4 9c0 1.7 1.3 3 3 3s2.7-1.3 2.7-3c0 1.7 1.3 3 2.3 3s2.3-1.3 2.3-3c0 1.7 1 3 2.7 3s3-1.3 3-3" /><path d="M5.5 12v8h13v-8" /></svg></span>
           <b>{NOME_TROCAS}</b><span className="hint">Troque o que não usa por celus</span>
+        </Link>
+        <Link to="/ranking" className="box entrada">
+          <span className="entrada-ic rank-cor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" /></svg></span>
+          <b>Ranking</b><span className="hint">Quem mais ganha celus, ao vivo</span>
+        </Link>
+        <Link to="/loteria" className="box entrada">
+          <span className="entrada-ic lot-cor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12c3-5 9-6 13-3l5-3-1 6 1 6-5-3c-4 3-10 2-13-3z" /><circle cx="8" cy="11" r=".8" fill="currentColor" /></svg></span>
+          <b>{NOME_LOTERIA}</b><span className="hint">Acerte 3 elementos do mar. Acumula!</span>
         </Link>
       </div>
 
